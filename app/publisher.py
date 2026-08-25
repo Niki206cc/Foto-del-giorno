@@ -35,6 +35,31 @@ def _author_html(author):
     return f"<p><strong>Foto di:</strong> {html.escape(author)}</p>"
 
 
+def _pcustom_block(name, value):
+    """Genera uno shortcode Postie Shortcodes AddOn per salvare un custom field.
+
+    Il blocco viene inserito dentro un contenitore nascosto: se l'add-on non fosse
+    attivo, gli shortcode non compariranno comunque visivamente nell'articolo HTML.
+    """
+    value = (value or "").strip()
+    if not value:
+        return ""
+    return f'[pcustom name="{name}"]{html.escape(value)}[/pcustom]'
+
+
+def _photo_custom_fields_html(row):
+    fields = [
+        _pcustom_block("foto_autore", row["author"]),
+        _pcustom_block("foto_luogo", row["location"]),
+        _pcustom_block("foto_provincia", row["province"]),
+        _pcustom_block("foto_data", row["shot_date"]),
+    ]
+    fields = [x for x in fields if x]
+    if not fields:
+        return ""
+    return "<div style='display:none'>" + "\n".join(fields) + "</div>"
+
+
 def build_postie_message(row):
     s = get_settings()
     category = (s.get("postie_category") or "").strip()
@@ -50,13 +75,13 @@ def build_postie_message(row):
     footer = (s.get("footer_text") or "").replace("{email_foto}", public_email)
     tags = (s.get("postie_tags") or "").strip()
 
-    # Non inseriamo più "status: publish" nell'HTML: WordPress/plugin social
-    # potevano usarlo come primo testo dell'anteprima. Lo stato resta gestito
-    # dalla configurazione predefinita di Postie.
+    # I custom fields vengono passati a WordPress tramite lo shortcode [pcustom]
+    # del Postie Shortcodes AddOn. Elementor potrà poi leggerli come campi dinamici.
     body_parts = [
         "<p><strong>Foto del giorno</strong></p>",
         _paragraphs(row["article_text"]),
         _author_html(row["author"]),
+        _photo_custom_fields_html(row),
     ]
 
     if tags:
@@ -69,6 +94,7 @@ def build_postie_message(row):
     ])
     body_html = "\n".join(x for x in body_parts if x)
 
+    # La parte plain resta pulita: niente shortcode tecnici visibili.
     plain_parts = ["Foto del giorno", row["article_text"] or ""]
     if (row["author"] or "").strip():
         plain_parts.append(f"Foto di: {row['author'].strip()}")
