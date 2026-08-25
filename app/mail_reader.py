@@ -21,24 +21,14 @@ def decode(value):
 
 
 def extract_sender(msg):
-    """Estrae il mittente in modo robusto usando From e fallback comuni."""
-    candidates = [
-        msg.get("From"),
-        msg.get("Reply-To"),
-        msg.get("Sender"),
-        msg.get("Return-Path"),
-    ]
+    candidates = [msg.get("From"), msg.get("Reply-To"), msg.get("Sender"), msg.get("Return-Path")]
     for raw in candidates:
         if not raw:
             continue
         decoded = decode(raw).strip()
-        addresses = email.utils.getaddresses([decoded])
-        for name, addr in addresses:
+        for name, addr in email.utils.getaddresses([decoded]):
             if addr:
                 return decode(name).strip(), addr.strip()
-        name, addr = email.utils.parseaddr(decoded)
-        if addr:
-            return decode(name).strip(), addr.strip()
     return "", ""
 
 
@@ -65,6 +55,15 @@ def extract_text(msg):
     return "\n".join(candidates).strip()
 
 
+def _already_imported(message_id):
+    with connect() as con:
+        row = con.execute(
+            "SELECT 1 FROM photos WHERE message_id=? OR message_id LIKE ? LIMIT 1",
+            (message_id, message_id + "#%"),
+        ).fetchone()
+    return row is not None
+
+
 def sync_mail():
     s = get_settings()
     if not s["imap_host"] or not s["imap_user"] or not s["imap_password"]:
@@ -74,27 +73,43 @@ def sync_mail():
     port = int(s.get("imap_port") or 993)
     client = imaplib.IMAP4_SSL(s["imap_host"], port) if s.get("imap_ssl") == "1" else imaplib.IMAP4(s["imap_host"], port)
     client.login(s["imap_user"], s["imap_password"])
-    client.select(s.get("imap_folder") or "INBOX")
+    typ, _ = client.select(s.get("imap_folder") or "INBOX")
+    if typ != "OK":
+        client.logout()
+        return {"ok": False, "message": "Impossibile aprire la cartella IMAP", "added": 0}
 
-    typ, data = client.search(None, "UNSEEN")
+    # Legge tutta la INBOX, non solo UNSEEN: Roundcube o altri client possono
+    # aver marcato una mail come letta prima che il Raspberry la elabori.
+    typ, data = client.search(None, "ALL")
     if typ != "OK":
         client.logout()
         return {"ok": False, "message": "Errore ricerca IMAP", "added": 0}
 
     added = 0
-    for uid in data[0].split():
-        typ, raw = client.fetch(uid, "(RFC822)")
-        if typ != "OK":
+    deleted = 0
+    skipped = 0
+
+    for seq in data[0].split():
+        typ, raw = client.fetch(seq, "(RFC822)")
+        if typ != "OK" or not raw or not isinstance(raw[0], tuple):
             continue
+
         msg = email.message_from_bytes(raw[0][1])
-        message_id = msg.get("Message-ID") or f"imap-{uid.decode()}"
+        message_id = (msg.get("Message-ID") or f"imap-{seq.decode()}").strip()
+
+        # Se la mail era già stata importata in passato, la possiamo rimuovere
+        # dalla casella senza creare duplicati nel database.
+        if _already_imported(message_id):
+            client.store(seq, "+FLAGS", "\\Deleted")
+            deleted += 1
+            continue
+
         subject = decode(msg.get("Subject"))
         sender_name, sender_email = extract_sender(msg)
         body = extract_text(msg)
         received = msg.get("Date", "")
         try:
-            received_dt = email.utils.parsedate_to_datetime(received)
-            received_iso = received_dt.isoformat()
+            received_iso = email.utils.parsedate_to_datetime(received).isoformat()
         except Exception:
             received_iso = datetime.now().astimezone().isoformat()
 
@@ -114,24 +129,43 @@ def sync_mail():
                 path.write_bytes(payload)
             images.append((path, safe_name, digest))
 
+        # Mail senza una vera immagine: non viene cancellata, così può essere
+        # controllata manualmente e non rischiamo di perdere invii validi.
         if not images:
+            skipped += 1
             continue
 
+        inserted = 0
         with connect() as con:
             for i, (path, name, digest) in enumerate(images):
                 msg_key = message_id if len(images) == 1 else f"{message_id}#{i+1}"
                 try:
                     con.execute("""
-                    INSERT INTO photos(
-                        message_id, sender_email, sender_name, email_subject, email_body,
-                        received_at, image_path, image_name, image_hash, status
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')
+                        INSERT INTO photos(
+                            message_id, sender_email, sender_name, email_subject, email_body,
+                            received_at, image_path, image_name, image_hash, status
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')
                     """, (msg_key, sender_email, sender_name, subject, body, received_iso,
                           str(path), name, digest))
+                    inserted += 1
                     added += 1
                 except Exception:
                     pass
-        client.store(uid, "+FLAGS", "\\Seen")
 
+        # Elimina dal server soltanto dopo un'importazione riuscita.
+        if inserted > 0:
+            client.store(seq, "+FLAGS", "\\Deleted")
+            deleted += 1
+
+    # Rende effettive le eliminazioni sul server IMAP.
+    if deleted:
+        client.expunge()
     client.logout()
-    return {"ok": True, "message": f"Sincronizzazione completata: {added} foto nuove", "added": added}
+
+    return {
+        "ok": True,
+        "message": f"Sincronizzazione completata: {added} foto nuove, {deleted} email eliminate, {skipped} senza foto",
+        "added": added,
+        "deleted": deleted,
+        "skipped": skipped,
+    }
