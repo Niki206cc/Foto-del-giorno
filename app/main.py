@@ -8,15 +8,28 @@ from .mail_reader import sync_mail
 from .ai_service import analyze_photo, test_ai_connection
 from .publisher import send_to_postie
 from .scheduler import start_scheduler, next_slot
+from .version import APP_VERSION, CHANGELOG
 
 app = Flask(__name__)
 app.secret_key = os.getenv("APP_SECRET_KEY", "cambia-questa-chiave")
 init_db()
 start_scheduler()
 
+
+@app.context_processor
+def inject_app_info():
+    return {"app_version": APP_VERSION}
+
+
 @app.get("/health")
 def health():
-    return {"ok": True}
+    return {"ok": True, "version": APP_VERSION}
+
+
+@app.get("/changelog")
+def changelog():
+    return render_template("changelog.html", changelog=CHANGELOG)
+
 
 @app.get("/")
 def index():
@@ -29,6 +42,7 @@ def index():
         """).fetchall()
     return render_template("index.html", rows=rows, counts=counts)
 
+
 @app.get("/queue")
 def queue():
     with connect() as con:
@@ -37,6 +51,7 @@ def queue():
             ORDER BY scheduled_at ASC
         """).fetchall()
     return render_template("queue.html", rows=rows)
+
 
 @app.get("/archive")
 def archive():
@@ -47,10 +62,11 @@ def archive():
         """).fetchall()
     return render_template("archive.html", rows=rows)
 
+
 @app.route("/photo/<int:photo_id>", methods=["GET", "POST"])
 def photo(photo_id):
     if request.method == "POST":
-        fields = ["title","author","location","province","shot_date","article_text"]
+        fields = ["title", "author", "location", "province", "shot_date", "article_text"]
         vals = [request.form.get(f, "") for f in fields]
         with connect() as con:
             con.execute(f"""
@@ -66,6 +82,7 @@ def photo(photo_id):
         abort(404)
     return render_template("photo.html", row=row)
 
+
 @app.get("/photo/<int:photo_id>/image")
 def photo_image(photo_id):
     with connect() as con:
@@ -73,6 +90,7 @@ def photo_image(photo_id):
     if not row or not row["image_path"] or not Path(row["image_path"]).exists():
         abort(404)
     return send_file(row["image_path"])
+
 
 @app.post("/photo/<int:photo_id>/ai")
 def photo_ai(photo_id):
@@ -98,6 +116,7 @@ def photo_ai(photo_id):
         flash(str(e), "danger")
     return redirect(url_for("photo", photo_id=photo_id))
 
+
 @app.post("/photo/<int:photo_id>/schedule")
 def photo_schedule(photo_id):
     raw = request.form.get("scheduled_at", "").strip()
@@ -113,6 +132,7 @@ def photo_schedule(photo_id):
     flash(f"Programmata per {dt.strftime('%d/%m/%Y %H:%M')}.", "success")
     return redirect(url_for("queue"))
 
+
 @app.post("/photo/<int:photo_id>/send")
 def photo_send(photo_id):
     try:
@@ -124,12 +144,14 @@ def photo_send(photo_id):
         flash(str(e), "danger")
     return redirect(url_for("photo", photo_id=photo_id))
 
+
 @app.post("/photo/<int:photo_id>/trash")
 def photo_trash(photo_id):
     with connect() as con:
         con.execute("UPDATE photos SET status='trash', updated_at=CURRENT_TIMESTAMP WHERE id=?", (photo_id,))
     flash("Foto spostata nel cestino.", "success")
     return redirect(url_for("index"))
+
 
 @app.post("/photo/<int:photo_id>/delete")
 def photo_delete(photo_id):
@@ -143,6 +165,7 @@ def photo_delete(photo_id):
     flash("Foto eliminata definitivamente dall'archivio.", "success")
     return redirect(url_for("archive"))
 
+
 @app.post("/sync")
 def sync():
     try:
@@ -152,22 +175,23 @@ def sync():
         flash(str(e), "danger")
     return redirect(url_for("index"))
 
+
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
     if request.method == "POST":
         allowed = [
-            "imap_host","imap_port","imap_ssl","imap_user","imap_password","imap_folder","imap_poll_minutes",
-            "smtp_host","smtp_port","smtp_tls","smtp_user","smtp_password","smtp_from","postie_to",
-            "postie_category","postie_tags","postie_status","publish_time","auto_schedule",
-            "ai_provider","ai_api_key","ai_model","ai_prompt",
-            "footer_text","photo_public_email","site_home_url","cleanup_published_days","cleanup_trash_days"
+            "imap_host", "imap_port", "imap_ssl", "imap_user", "imap_password", "imap_folder", "imap_poll_minutes",
+            "smtp_host", "smtp_port", "smtp_tls", "smtp_user", "smtp_password", "smtp_from", "postie_to",
+            "postie_category", "postie_category_id", "postie_tags", "postie_status", "publish_time", "auto_schedule",
+            "ai_provider", "ai_api_key", "ai_model", "ai_prompt",
+            "footer_text", "photo_public_email", "site_home_url", "cleanup_published_days", "cleanup_trash_days"
         ]
         current = get_settings()
         values = {}
         for k in allowed:
-            if k in ("imap_ssl","smtp_tls","auto_schedule"):
+            if k in ("imap_ssl", "smtp_tls", "auto_schedule"):
                 values[k] = "1" if request.form.get(k) else "0"
-            elif k in ("imap_password","smtp_password","ai_api_key") and not request.form.get(k):
+            elif k in ("imap_password", "smtp_password", "ai_api_key") and not request.form.get(k):
                 values[k] = current.get(k, "")
             else:
                 values[k] = request.form.get(k, "")
@@ -175,6 +199,7 @@ def settings():
         flash("Impostazioni salvate. Riavvia il container se cambi l'intervallo IMAP.", "success")
         return redirect(url_for("settings"))
     return render_template("settings.html", s=get_settings())
+
 
 @app.post("/settings/test-ai")
 def settings_test_ai():
@@ -184,6 +209,7 @@ def settings_test_ai():
     except Exception as e:
         flash(f"Test AI fallito: {e}", "danger")
     return redirect(url_for("settings"))
+
 
 @app.post("/maintenance/clear")
 def maintenance_clear():
