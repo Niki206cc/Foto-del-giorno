@@ -8,7 +8,8 @@ from datetime import datetime
 from .db import connect, get_settings
 
 PHOTO_DIR = Path("/app/data/photos")
-ALLOWED_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+ALLOWED_TYPES = {"image/jpeg": ".jpg", "image/jpg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
+ALLOWED_EXTENSIONS = {".jpg", ".jpeg", ".png", ".webp"}
 
 
 def decode(value):
@@ -64,6 +65,25 @@ def _already_imported(message_id):
     return row is not None
 
 
+def _image_part_info(part):
+    """Riconosce immagini anche quando Elementor/Post SMTP usa MIME generico."""
+    ctype = (part.get_content_type() or "").lower()
+    filename = decode(part.get_filename()).strip()
+    ext = Path(filename).suffix.lower() if filename else ""
+
+    if ctype in ALLOWED_TYPES:
+        fallback_ext = ALLOWED_TYPES[ctype]
+        return filename or f"foto{fallback_ext}", fallback_ext
+
+    # Alcuni invii WordPress/Elementor arrivano come application/octet-stream
+    # pur avendo un filename .jpg/.jpeg/.png/.webp corretto.
+    if ext in ALLOWED_EXTENSIONS:
+        normalized_ext = ".jpg" if ext == ".jpeg" else ext
+        return filename, normalized_ext
+
+    return None, None
+
+
 def sync_mail():
     s = get_settings()
     if not s["imap_host"] or not s["imap_user"] or not s["imap_password"]:
@@ -78,8 +98,6 @@ def sync_mail():
         client.logout()
         return {"ok": False, "message": "Impossibile aprire la cartella IMAP", "added": 0}
 
-    # Legge tutta la INBOX, non solo UNSEEN: Roundcube o altri client possono
-    # aver marcato una mail come letta prima che il Raspberry la elabori.
     typ, data = client.search(None, "ALL")
     if typ != "OK":
         client.logout()
@@ -97,8 +115,6 @@ def sync_mail():
         msg = email.message_from_bytes(raw[0][1])
         message_id = (msg.get("Message-ID") or f"imap-{seq.decode()}").strip()
 
-        # Se la mail era già stata importata in passato, la possiamo rimuovere
-        # dalla casella senza creare duplicati nel database.
         if _already_imported(message_id):
             client.store(seq, "+FLAGS", "\\Deleted")
             deleted += 1
@@ -115,22 +131,21 @@ def sync_mail():
 
         images = []
         for part in msg.walk():
-            ctype = part.get_content_type()
-            if ctype not in ALLOWED_TYPES:
+            filename, fallback_ext = _image_part_info(part)
+            if not filename:
                 continue
             payload = part.get_payload(decode=True)
             if not payload:
                 continue
-            filename = decode(part.get_filename()) or f"foto{ALLOWED_TYPES[ctype]}"
             digest = hashlib.sha256(payload).hexdigest()
             safe_name = re.sub(r"[^A-Za-z0-9._-]+", "_", filename)
+            if not Path(safe_name).suffix:
+                safe_name += fallback_ext
             path = PHOTO_DIR / f"{digest[:16]}_{safe_name}"
             if not path.exists():
                 path.write_bytes(payload)
             images.append((path, safe_name, digest))
 
-        # Mail senza una vera immagine: non viene cancellata, così può essere
-        # controllata manualmente e non rischiamo di perdere invii validi.
         if not images:
             skipped += 1
             continue
@@ -152,12 +167,10 @@ def sync_mail():
                 except Exception:
                     pass
 
-        # Elimina dal server soltanto dopo un'importazione riuscita.
         if inserted > 0:
             client.store(seq, "+FLAGS", "\\Deleted")
             deleted += 1
 
-    # Rende effettive le eliminazioni sul server IMAP.
     if deleted:
         client.expunge()
     client.logout()
