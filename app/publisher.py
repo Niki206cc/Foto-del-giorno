@@ -9,6 +9,22 @@ def _paragraphs(text):
     chunks = [x.strip() for x in (text or "").split("\n\n") if x.strip()]
     return "\n".join(f"<p>{html.escape(x).replace(chr(10), '<br>')}</p>" for x in chunks)
 
+def _footer_html(text, public_email, site_home_url):
+    safe = html.escape(text or "").replace(chr(10), "<br>")
+
+    if public_email:
+        escaped_email = html.escape(public_email)
+        mailto = f'<a href="mailto:{html.escape(public_email, quote=True)}">{escaped_email}</a>'
+        safe = safe.replace(escaped_email, mailto)
+
+    if site_home_url:
+        brand = "Montagne &amp; Paesi"
+        brand_link = f'<a href="{html.escape(site_home_url, quote=True)}">{brand}</a>'
+        safe = safe.replace(brand, brand_link)
+
+    chunks = [x.strip() for x in safe.split("<br><br>") if x.strip()]
+    return "\n".join(f"<p>{x}</p>" for x in chunks)
+
 def build_postie_message(row):
     s = get_settings()
     category = (s.get("postie_category") or "").strip()
@@ -17,6 +33,7 @@ def build_postie_message(row):
     subject = f"[{category}] {row['title']}" if category else row["title"]
 
     public_email = (s.get("photo_public_email") or "").strip()
+    site_home_url = (s.get("site_home_url") or "https://www.montagneepaesi.com/").strip()
     footer = (s.get("footer_text") or "").replace("{email_foto}", public_email)
     tags = (s.get("postie_tags") or "").strip()
     status = (s.get("postie_status") or "publish").strip()
@@ -29,7 +46,7 @@ def build_postie_message(row):
         *[f"<p style='display:none'>{html.escape(x)}</p>" for x in metadata],
         _paragraphs(row["article_text"]),
         "<hr>",
-        _paragraphs(footer)
+        _footer_html(footer, public_email, site_home_url)
     ])
 
     msg = EmailMessage()
