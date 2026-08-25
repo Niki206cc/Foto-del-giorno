@@ -31,17 +31,30 @@ Testo:
 """
 
 
+def _as_text(value, separator=", "):
+    """Converte sempre i valori AI in testo compatibile con SQLite/form HTML."""
+    if value is None:
+        return ""
+    if isinstance(value, list):
+        return separator.join(_as_text(v, separator) for v in value if v is not None)
+    if isinstance(value, dict):
+        return json.dumps(value, ensure_ascii=False)
+    return str(value)
+
+
 def _normalize_result(result):
+    if not isinstance(result, dict):
+        raise ValueError("La risposta AI deve essere un oggetto JSON")
     return {
-        "title": result.get("title", ""),
-        "author": result.get("author", ""),
-        "location": result.get("location", ""),
-        "province": result.get("province", ""),
-        "shot_date": result.get("shot_date", ""),
-        "article_text": result.get("article_text", ""),
-        "instagram_text": result.get("instagram_text", ""),
-        "alt_text": result.get("alt_text", ""),
-        "hashtags": result.get("hashtags", ""),
+        "title": _as_text(result.get("title")),
+        "author": _as_text(result.get("author")),
+        "location": _as_text(result.get("location")),
+        "province": _as_text(result.get("province")),
+        "shot_date": _as_text(result.get("shot_date")),
+        "article_text": _as_text(result.get("article_text"), "\n\n"),
+        "instagram_text": _as_text(result.get("instagram_text"), "\n"),
+        "alt_text": _as_text(result.get("alt_text"), " "),
+        "hashtags": _as_text(result.get("hashtags"), " "),
     }
 
 
@@ -132,8 +145,6 @@ def analyze_photo(row):
     provider = (settings.get("ai_provider") or "gemini").strip().lower()
     api_key = (settings.get("ai_api_key") or "").strip()
 
-    # Retrocompatibilità: se la chiave non è salvata nelle impostazioni,
-    # prova a leggerla dalle variabili d'ambiente dello Stack.
     if not api_key:
         if provider == "gemini":
             api_key = os.getenv("GEMINI_API_KEY", "").strip()
