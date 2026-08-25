@@ -66,26 +66,41 @@ L'app genera l'oggetto così:
 
 `[La foto del giorno] Titolo dell'articolo`
 
+Se viene impostato l'ID numerico della categoria WordPress, l'app preferisce l'ID:
+
+`[123] Titolo dell'articolo`
+
 Postie supporta l'override della categoria tramite parentesi quadre nel subject. La categoria deve esistere già in WordPress e in Postie deve essere abilitata l'opzione per riconoscere le categorie tramite parentesi quadre.
-
-Nel body vengono inoltre inseriti:
-
-`status: publish`
-
-e, se configurati:
-
-`tags: tag1, tag2`
 
 ### Nota HTML/Postie
 
 Per ottenere il corpo formattato, configura Postie per preferire HTML e consentire HTML nel corpo del messaggio.
+
+## Custom field per Elementor
+
+Dalla versione 1.2.0 l'app invia automaticamente a WordPress questi custom field:
+
+- `foto_autore` — nome di chi ha scattato la foto;
+- `foto_luogo` — località dello scatto;
+- `foto_provincia` — provincia;
+- `foto_data` — data dello scatto.
+
+I campi vengono inviati tramite gli shortcode `[pcustom]` del **Postie Shortcodes AddOn**. Perché WordPress salvi realmente questi valori come custom field è necessario installare e attivare il Postie Shortcodes AddOn.
+
+In Elementor Pro puoi poi usare **Tag dinamici → Campo personalizzato** e indicare una delle chiavi sopra. Per esempio:
+
+- `Foto di: ` + campo dinamico `foto_autore`
+- icona posizione + campo dinamico `foto_luogo`
+- icona calendario + campo dinamico `foto_data`
+
+Se l'add-on non è attivo, gli shortcode tecnici sono comunque inseriti in un contenitore HTML nascosto e non dovrebbero risultare visibili nell'articolo.
 
 ## Impostazioni disponibili
 
 - IMAP: host, porta, SSL, account, password, cartella, intervallo.
 - AI: modello e prompt modificabile.
 - SMTP: host, porta, TLS, account, password, mittente.
-- Postie: destinatario, categoria, tag, stato.
+- Postie: destinatario, categoria, ID categoria, tag, stato.
 - Programmazione: ora predefinita.
 - Footer: testo modificabile con `{email_foto}`.
 - Pulizia automatica:
