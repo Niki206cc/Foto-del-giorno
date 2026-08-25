@@ -1,4 +1,6 @@
+import base64
 import html
+import json
 import smtplib
 from email.message import EmailMessage
 from pathlib import Path
@@ -33,20 +35,20 @@ def _author_html(author):
 
 
 def _metadata_marker(row):
-    """Blocco tecnico letto dal plugin WordPress gratuito incluso nel repository."""
+    """Blocco tecnico robusto letto dal plugin WordPress incluso nel repository."""
     fields = {
         "foto_autore": (row["author"] or "").strip(),
         "foto_luogo": (row["location"] or "").strip(),
         "foto_provincia": (row["province"] or "").strip(),
         "foto_data": (row["shot_date"] or "").strip(),
     }
-    lines = [f"{key}={value}" for key, value in fields.items() if value]
-    if not lines:
+    fields = {k: v for k, v in fields.items() if v}
+    if not fields:
         return ""
-    # Commento HTML: non è visibile ai lettori, ma rimane nel post_content
-    # abbastanza a lungo perché il plugin WordPress lo trasformi in post meta.
-    payload = "\n".join(lines).replace("--", "—")
-    return f"<!-- FOTO_DEL_GIORNO_META\n{html.escape(payload)}\n/FOTO_DEL_GIORNO_META -->"
+
+    raw = json.dumps(fields, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    encoded = base64.b64encode(raw).decode("ascii")
+    return f"<!-- FOTO_DEL_GIORNO_META_V2:{encoded} -->"
 
 
 def build_postie_message(row):
