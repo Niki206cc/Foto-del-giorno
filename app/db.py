@@ -43,6 +43,7 @@ Inviala a {email_foto} indicando il luogo dello scatto e il tuo nome e cognome.
 
 Potresti vederla pubblicata nella rubrica \"La foto del giorno\".""",
     "photo_public_email": "",
+    "site_home_url": "https://www.montagneepaesi.com/",
 
     "cleanup_published_days": "90",
     "cleanup_trash_days": "30",
