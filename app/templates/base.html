@@ -7,7 +7,7 @@
   <style>
     :root {font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1f2937;background:#f5f7f8}
     body{margin:0}.nav{background:#173b2b;color:white;padding:14px 22px;display:flex;gap:18px;align-items:center}
-    .nav a{color:white;text-decoration:none}.brand{font-weight:800;margin-right:auto}
+    .nav a{color:white;text-decoration:none}.brand{font-weight:800;margin-right:auto}.version{font-size:.78rem;opacity:.8;margin-left:6px;font-weight:600}
     .wrap{max-width:1200px;margin:22px auto;padding:0 16px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
     .card{background:white;border:1px solid #e5e7eb;border-radius:12px;padding:16px}.btn{display:inline-block;border:0;border-radius:8px;padding:9px 12px;background:#173b2b;color:white;text-decoration:none;cursor:pointer}
     .btn.alt{background:#475569}.btn.danger{background:#9f1239}.btn.warn{background:#92400e}
@@ -21,11 +21,12 @@
 </head>
 <body>
 <nav class="nav">
-  <div class="brand">📸 Foto del giorno</div>
+  <div class="brand">📸 Foto del giorno <span class="version">v{{ app_version }}</span></div>
   <a href="{{ url_for('index') }}">Posta ricevuta</a>
   <a href="{{ url_for('queue') }}">Coda</a>
   <a href="{{ url_for('archive') }}">Archivio</a>
   <a href="{{ url_for('settings') }}">Impostazioni</a>
+  <a href="{{ url_for('changelog') }}">Versioni</a>
 </nav>
 <div class="wrap">
 {% for category, message in get_flashed_messages(with_categories=true) %}
