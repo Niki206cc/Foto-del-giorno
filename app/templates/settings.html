@@ -39,11 +39,14 @@
 <label>Mittente</label><input name="smtp_from" value="{{s.smtp_from}}">
 <label>Email destinatario Postie</label><input name="postie_to" value="{{s.postie_to}}">
 <label>Categoria WordPress</label><input name="postie_category" value="{{s.postie_category}}">
+<label>ID categoria WordPress <span class="muted">(consigliato)</span></label><input name="postie_category_id" value="{{s.postie_category_id}}" inputmode="numeric" placeholder="es. 123">
+<p class="muted">Se inserisci l'ID numerico, l'app userà quello nel subject di Postie al posto del nome. È più affidabile se esistono categorie con nomi simili. L'ID si vede nell'URL di WordPress quando modifichi la categoria, nel parametro <b>tag_ID</b>.</p>
 <label>Tag predefiniti</label><input name="postie_tags" value="{{s.postie_tags}}">
 <label>Stato Postie</label>
 <select name="postie_status">
 {% for x in ['publish','draft','pending','private'] %}<option {% if s.postie_status==x %}selected{% endif %}>{{x}}</option>{% endfor %}
 </select>
+<p class="muted">Lo stato effettivo viene gestito dalla configurazione predefinita di Postie. La riga tecnica “status: publish” non viene più inserita nel contenuto dell'articolo, così non compare nelle anteprime social.</p>
 </div>
 
 <div class="card">
