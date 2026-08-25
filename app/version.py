@@ -1,6 +1,16 @@
-APP_VERSION = "1.2.3"
+APP_VERSION = "1.2.4"
 
 CHANGELOG = [
+    {
+        "version": "1.2.4",
+        "date": "25/08/2026",
+        "changes": [
+            "Corretto il passaggio dei custom field verso WordPress: autore, luogo, provincia e data vengono ora codificati in JSON Base64 per evitare che Postie unisca le righe.",
+            "Aggiornato il plugin WordPress alla versione 1.1.0 con parsing robusto dei metadati.",
+            "Aggiunta compatibilità con i vecchi marcatori della v1.2.1-v1.2.3.",
+            "Aggiunta riparazione automatica dei post in cui foto_autore conteneva per errore anche luogo, provincia e data."
+        ],
+    },
     {
         "version": "1.2.3",
         "date": "25/08/2026",
