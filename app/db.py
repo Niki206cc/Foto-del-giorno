@@ -27,7 +27,9 @@ DEFAULT_SETTINGS = {
     "publish_time": "12:30",
     "auto_schedule": "1",
 
-    "ai_model": "gpt-5.6-luna",
+    "ai_provider": "gemini",
+    "ai_api_key": "",
+    "ai_model": "gemini-2.5-flash",
     "ai_prompt": """Sei un redattore di Montagne & Paesi. Analizza la fotografia e la mail ricevuta.
 Non inventare mai nomi di montagne, luoghi, persone o date non esplicitamente forniti.
 Usa ciò che vedi solo per descrivere elementi visivi generici.
@@ -39,7 +41,7 @@ article_text deve essere un breve testo giornalistico in italiano, naturale e no
 
 Inviala a {email_foto} indicando il luogo dello scatto e il tuo nome e cognome.
 
-Potresti vederla pubblicata nella rubrica "La foto del giorno".""",
+Potresti vederla pubblicata nella rubrica \"La foto del giorno\".""",
     "photo_public_email": "",
 
     "cleanup_published_days": "90",
