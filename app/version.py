@@ -1,6 +1,18 @@
-APP_VERSION = "1.2.1"
+APP_VERSION = "1.2.2"
 
 CHANGELOG = [
+    {
+        "version": "1.2.2",
+        "date": "25/08/2026",
+        "changes": [
+            "Corretto il controllo IMAP: vengono esaminate tutte le email della INBOX e non soltanto quelle marcate come non lette.",
+            "Aggiunto controllo Message-ID per impedire la reimportazione delle email già presenti nel database.",
+            "Le email con fotografia vengono eliminate dal server soltanto dopo che l'importazione è riuscita.",
+            "Aggiunto EXPUNGE IMAP per rendere effettiva l'eliminazione delle email elaborate.",
+            "Le email senza immagini valide non vengono eliminate, per evitare la perdita accidentale di messaggi.",
+            "Il risultato della sincronizzazione mostra foto importate, email eliminate ed email senza foto."
+        ],
+    },
     {
         "version": "1.2.1",
         "date": "25/08/2026",
