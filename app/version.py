@@ -1,6 +1,16 @@
-APP_VERSION = "1.1.0"
+APP_VERSION = "1.2.0"
 
 CHANGELOG = [
+    {
+        "version": "1.2.0",
+        "date": "25/08/2026",
+        "changes": [
+            "Aggiunto passaggio automatico a WordPress dei custom field foto_autore, foto_luogo, foto_provincia e foto_data.",
+            "I custom field vengono inviati tramite shortcode [pcustom] compatibili con Postie Shortcodes AddOn.",
+            "I metadati tecnici vengono inseriti in un contenitore HTML nascosto per non comparire nel testo dell'articolo se l'add-on non fosse attivo.",
+            "Elementor può ora leggere autore, luogo, provincia e data come campi dinamici separati."
+        ],
+    },
     {
         "version": "1.1.0",
         "date": "25/08/2026",
