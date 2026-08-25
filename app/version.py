@@ -1,6 +1,16 @@
-APP_VERSION = "1.2.2"
+APP_VERSION = "1.2.3"
 
 CHANGELOG = [
+    {
+        "version": "1.2.3",
+        "date": "25/08/2026",
+        "changes": [
+            "Corretto il riconoscimento degli allegati inviati da Elementor/Post SMTP.",
+            "Le immagini vengono ora riconosciute anche quando il server le invia come application/octet-stream invece di image/jpeg.",
+            "Aggiunto supporto al MIME image/jpg oltre a image/jpeg.",
+            "Il riconoscimento usa anche l'estensione reale del nome file: .jpg, .jpeg, .png e .webp."
+        ],
+    },
     {
         "version": "1.2.2",
         "date": "25/08/2026",
