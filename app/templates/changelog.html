@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% block title %}Registro versioni - Foto del giorno{% endblock %}
+{% block body %}
+<h1>Registro versioni</h1>
+<p class="muted">Versione installata: <strong>v{{ app_version }}</strong></p>
+{% for item in changelog %}
+<div class="card" style="margin-bottom:14px">
+  <h2 style="margin-top:0">v{{ item.version }} <span class="muted">— {{ item.date }}</span></h2>
+  <ul>
+  {% for change in item.changes %}
+    <li style="margin-bottom:7px">{{ change }}</li>
+  {% endfor %}
+  </ul>
+</div>
+{% endfor %}
+{% endblock %}
