@@ -1,0 +1,13 @@
+services:
+  foto-del-giorno:
+    image: ghcr.io/TUO-UTENTE/foto-del-giorno:latest
+    container_name: foto-del-giorno
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      TZ: Europe/Rome
+      APP_SECRET_KEY: "CAMBIA_QUESTA_CHIAVE"
+      OPENAI_API_KEY: "INSERISCI_API_KEY"
+    volumes:
+      - /opt/foto-del-giorno/data:/app/data

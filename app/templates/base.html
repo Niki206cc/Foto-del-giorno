@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>{% block title %}Foto del giorno{% endblock %}</title>
+  <style>
+    :root {font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;color:#1f2937;background:#f5f7f8}
+    body{margin:0}.nav{background:#173b2b;color:white;padding:14px 22px;display:flex;gap:18px;align-items:center}
+    .nav a{color:white;text-decoration:none}.brand{font-weight:800;margin-right:auto}
+    .wrap{max-width:1200px;margin:22px auto;padding:0 16px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
+    .card{background:white;border:1px solid #e5e7eb;border-radius:12px;padding:16px}.btn{display:inline-block;border:0;border-radius:8px;padding:9px 12px;background:#173b2b;color:white;text-decoration:none;cursor:pointer}
+    .btn.alt{background:#475569}.btn.danger{background:#9f1239}.btn.warn{background:#92400e}
+    table{width:100%;border-collapse:collapse;background:white}th,td{padding:10px;border-bottom:1px solid #e5e7eb;text-align:left;vertical-align:top}th{background:#f8fafc}
+    input,textarea,select{width:100%;box-sizing:border-box;padding:9px;border:1px solid #cbd5e1;border-radius:7px}textarea{min-height:110px}
+    label{font-weight:650;display:block;margin:10px 0 5px}.flash{padding:10px 12px;margin:10px 0;border-radius:8px;background:#e2e8f0}.success{background:#dcfce7}.danger{background:#fee2e2}.warning{background:#fef3c7}
+    .photo{max-width:100%;max-height:600px;border-radius:10px}.two{display:grid;grid-template-columns:minmax(280px,1fr) minmax(360px,1fr);gap:18px}
+    .muted{color:#64748b;font-size:.92rem}.badge{padding:3px 8px;border-radius:999px;background:#e2e8f0;font-size:.8rem}
+    @media(max-width:800px){.two{grid-template-columns:1fr}.nav{flex-wrap:wrap}}
+  </style>
+</head>
+<body>
+<nav class="nav">
+  <div class="brand">📸 Foto del giorno</div>
+  <a href="{{ url_for('index') }}">Posta ricevuta</a>
+  <a href="{{ url_for('queue') }}">Coda</a>
+  <a href="{{ url_for('archive') }}">Archivio</a>
+  <a href="{{ url_for('settings') }}">Impostazioni</a>
+</nav>
+<div class="wrap">
+{% for category, message in get_flashed_messages(with_categories=true) %}
+  <div class="flash {{category}}">{{message}}</div>
+{% endfor %}
+{% block body %}{% endblock %}
+</div>
+</body>
+</html>

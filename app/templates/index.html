@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Posta ricevuta{% endblock %}
+{% block body %}
+<div style="display:flex;justify-content:space-between;gap:12px;align-items:center">
+  <h1>Posta ricevuta</h1>
+  <form action="{{url_for('sync')}}" method="post"><button class="btn">Controlla ora la mail</button></form>
+</div>
+<div class="grid" style="margin-bottom:18px">
+  <div class="card"><strong>Nuove</strong><div style="font-size:2rem">{{counts.get('new',0)}}</div></div>
+  <div class="card"><strong>Elaborate</strong><div style="font-size:2rem">{{counts.get('processed',0)}}</div></div>
+  <div class="card"><strong>Programmate</strong><div style="font-size:2rem">{{counts.get('scheduled',0)}}</div></div>
+  <div class="card"><strong>Inviate</strong><div style="font-size:2rem">{{counts.get('sent',0)}}</div></div>
+</div>
+<table>
+<tr><th>Foto</th><th>Mittente</th><th>Oggetto</th><th>Stato</th><th></th></tr>
+{% for r in rows %}
+<tr>
+  <td><img src="{{url_for('photo_image',photo_id=r.id)}}" style="width:120px;max-height:90px;object-fit:cover;border-radius:7px"></td>
+  <td>{{r.sender_name}}<br><span class="muted">{{r.sender_email}}</span></td>
+  <td>{{r.email_subject}}<br><span class="muted">{{r.received_at}}</span>{% if r.last_error %}<div class="danger" style="padding:5px;margin-top:5px">{{r.last_error}}</div>{% endif %}</td>
+  <td><span class="badge">{{r.status}}</span></td>
+  <td><a class="btn" href="{{url_for('photo',photo_id=r.id)}}">Apri</a></td>
+</tr>
+{% else %}
+<tr><td colspan="5">Nessuna foto da elaborare.</td></tr>
+{% endfor %}
+</table>
+{% endblock %}

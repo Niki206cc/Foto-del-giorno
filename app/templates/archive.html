@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Archivio</h1>
+<table>
+<tr><th>Stato</th><th>Data</th><th>Titolo</th><th>Autore / luogo</th><th></th></tr>
+{% for r in rows %}
+<tr><td>{{r.status}}</td><td>{{r.published_at or r.updated_at}}</td><td>{{r.title}}</td><td>{{r.author}} — {{r.location}}</td>
+<td><a class="btn" href="{{url_for('photo',photo_id=r.id)}}">Apri</a></td></tr>
+{% else %}<tr><td colspan="5">Archivio vuoto.</td></tr>{% endfor %}
+</table>
+{% endblock %}

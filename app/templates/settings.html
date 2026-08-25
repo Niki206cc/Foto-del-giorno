@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Impostazioni</h1>
+<form method="post">
+<div class="grid">
+<div class="card">
+<h2>📨 Ricezione email</h2>
+<label>Server IMAP</label><input name="imap_host" value="{{s.imap_host}}">
+<label>Porta</label><input name="imap_port" value="{{s.imap_port}}">
+<label><input type="checkbox" name="imap_ssl" style="width:auto" {% if s.imap_ssl=='1' %}checked{% endif %}> SSL</label>
+<label>Username</label><input name="imap_user" value="{{s.imap_user}}">
+<label>Password <span class="muted">(lascia vuoto per non cambiarla)</span></label><input name="imap_password" type="password">
+<label>Cartella</label><input name="imap_folder" value="{{s.imap_folder}}">
+<label>Controllo ogni N minuti</label><input name="imap_poll_minutes" value="{{s.imap_poll_minutes}}">
+</div>
+
+<div class="card">
+<h2>🤖 AI</h2>
+<label>Modello</label><input name="ai_model" value="{{s.ai_model}}">
+<label>Prompt</label><textarea name="ai_prompt" style="min-height:320px">{{s.ai_prompt}}</textarea>
+<p class="muted">La API key OpenAI si imposta nello Stack tramite OPENAI_API_KEY.</p>
+</div>
+
+<div class="card">
+<h2>📤 SMTP / Postie</h2>
+<label>Server SMTP</label><input name="smtp_host" value="{{s.smtp_host}}">
+<label>Porta SMTP</label><input name="smtp_port" value="{{s.smtp_port}}">
+<label><input type="checkbox" name="smtp_tls" style="width:auto" {% if s.smtp_tls=='1' %}checked{% endif %}> STARTTLS</label>
+<label>Username</label><input name="smtp_user" value="{{s.smtp_user}}">
+<label>Password <span class="muted">(lascia vuoto per non cambiarla)</span></label><input name="smtp_password" type="password">
+<label>Mittente</label><input name="smtp_from" value="{{s.smtp_from}}">
+<label>Email destinatario Postie</label><input name="postie_to" value="{{s.postie_to}}">
+<label>Categoria WordPress</label><input name="postie_category" value="{{s.postie_category}}">
+<label>Tag predefiniti</label><input name="postie_tags" value="{{s.postie_tags}}">
+<label>Stato Postie</label>
+<select name="postie_status">
+{% for x in ['publish','draft','pending','private'] %}<option {% if s.postie_status==x %}selected{% endif %}>{{x}}</option>{% endfor %}
+</select>
+</div>
+
+<div class="card">
+<h2>📅 Programmazione</h2>
+<label>Orario predefinito</label><input name="publish_time" type="time" value="{{s.publish_time}}">
+<label><input type="checkbox" name="auto_schedule" style="width:auto" {% if s.auto_schedule=='1' %}checked{% endif %}> Usa primo giorno libero</label>
+</div>
+
+<div class="card">
+<h2>📝 Invito lettori</h2>
+<label>Email pubblica per le foto</label><input name="photo_public_email" value="{{s.photo_public_email}}">
+<label>Testo in fondo all'articolo</label><textarea name="footer_text" style="min-height:220px">{{s.footer_text}}</textarea>
+<p class="muted">Variabile disponibile: {email_foto}</p>
+</div>
+
+<div class="card">
+<h2>🧹 Manutenzione</h2>
+<label>Elimina file delle foto pubblicate dopo N giorni (0 = mai)</label><input name="cleanup_published_days" value="{{s.cleanup_published_days}}">
+<label>Elimina cestino dopo N giorni (0 = mai)</label><input name="cleanup_trash_days" value="{{s.cleanup_trash_days}}">
+</div>
+</div>
+<p><button class="btn" type="submit">Salva impostazioni</button></p>
+</form>
+
+<div class="card">
+<h2>Azioni manuali database</h2>
+<p class="muted">Le operazioni eliminano anche i file locali associati. Le foto già cancellate da qui non sono recuperabili.</p>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<form action="{{url_for('maintenance_clear')}}" method="post" onsubmit="return confirm('Svuotare il cestino?')"><input type="hidden" name="mode" value="trash"><button class="btn alt">Svuota cestino</button></form>
+<form action="{{url_for('maintenance_clear')}}" method="post" onsubmit="return confirm('Eliminare tutte le foto ricevute non programmate?')"><input type="hidden" name="mode" value="received"><button class="btn warn">Elimina foto ricevute</button></form>
+<form action="{{url_for('maintenance_clear')}}" method="post" onsubmit="return confirm('ATTENZIONE: eliminare TUTTO il database foto e i file?')"><input type="hidden" name="mode" value="all"><button class="btn danger">Svuota tutto</button></form>
+</div>
+</div>
+{% endblock %}

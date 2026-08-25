@@ -1,0 +1,80 @@
+import html
+import smtplib
+from email.message import EmailMessage
+from pathlib import Path
+from datetime import datetime
+from .db import connect, get_settings
+
+def _paragraphs(text):
+    chunks = [x.strip() for x in (text or "").split("\n\n") if x.strip()]
+    return "\n".join(f"<p>{html.escape(x).replace(chr(10), '<br>')}</p>" for x in chunks)
+
+def build_postie_message(row):
+    s = get_settings()
+    category = (s.get("postie_category") or "").strip()
+    # Postie supporta la categoria nel subject in [parentesi quadre].
+    # La categoria deve esistere già in WordPress e l'opzione Postie deve essere attiva.
+    subject = f"[{category}] {row['title']}" if category else row["title"]
+
+    public_email = (s.get("photo_public_email") or "").strip()
+    footer = (s.get("footer_text") or "").replace("{email_foto}", public_email)
+    tags = (s.get("postie_tags") or "").strip()
+    status = (s.get("postie_status") or "publish").strip()
+
+    metadata = [f"status: {status}"]
+    if tags:
+        metadata.append(f"tags: {tags}")
+
+    body_html = "\n".join([
+        *[f"<p style='display:none'>{html.escape(x)}</p>" for x in metadata],
+        _paragraphs(row["article_text"]),
+        "<hr>",
+        _paragraphs(footer)
+    ])
+
+    msg = EmailMessage()
+    msg["Subject"] = subject
+    msg["From"] = s["smtp_from"] or s["smtp_user"]
+    msg["To"] = s["postie_to"]
+    msg.set_content((row["article_text"] or "") + "\n\n" + footer)
+    msg.add_alternative(body_html, subtype="html")
+
+    image_path = Path(row["image_path"])
+    if image_path.exists():
+        ext = image_path.suffix.lower()
+        subtype = "jpeg" if ext in (".jpg", ".jpeg") else ext.lstrip(".") or "jpeg"
+        msg.add_attachment(image_path.read_bytes(), maintype="image", subtype=subtype, filename=row["image_name"] or image_path.name)
+    return msg
+
+def send_to_postie(photo_id):
+    s = get_settings()
+    needed = ["smtp_host", "smtp_user", "smtp_password", "postie_to"]
+    missing = [k for k in needed if not s.get(k)]
+    if missing:
+        raise RuntimeError("Configurazione SMTP/Postie incompleta: " + ", ".join(missing))
+
+    with connect() as con:
+        row = con.execute("SELECT * FROM photos WHERE id=?", (photo_id,)).fetchone()
+    if not row:
+        raise RuntimeError("Foto non trovata")
+
+    msg = build_postie_message(row)
+    port = int(s.get("smtp_port") or 587)
+    smtp = smtplib.SMTP(s["smtp_host"], port, timeout=30)
+    try:
+        smtp.ehlo()
+        if s.get("smtp_tls") == "1":
+            smtp.starttls()
+            smtp.ehlo()
+        smtp.login(s["smtp_user"], s["smtp_password"])
+        smtp.send_message(msg)
+    finally:
+        smtp.quit()
+
+    now = datetime.now().astimezone().isoformat()
+    with connect() as con:
+        con.execute("""
+            UPDATE photos
+            SET status='sent', sent_at=?, published_at=?, last_error=NULL, updated_at=CURRENT_TIMESTAMP
+            WHERE id=?
+        """, (now, now, photo_id))

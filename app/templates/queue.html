@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block body %}
+<h1>Coda pubblicazioni</h1>
+<table>
+<tr><th>Quando</th><th>Foto</th><th>Titolo</th><th>Autore / luogo</th><th></th></tr>
+{% for r in rows %}
+<tr>
+<td>{{r.scheduled_at}}</td>
+<td>{% if r.image_path %}<img src="{{url_for('photo_image',photo_id=r.id)}}" style="width:110px;max-height:80px;object-fit:cover">{% endif %}</td>
+<td>{{r.title}}</td><td>{{r.author}}<br>{{r.location}} {{r.province}}</td>
+<td><a class="btn" href="{{url_for('photo',photo_id=r.id)}}">Apri</a></td>
+</tr>
+{% else %}<tr><td colspan="5">Nessuna foto programmata.</td></tr>{% endfor %}
+</table>
+{% endblock %}

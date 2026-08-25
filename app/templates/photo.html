@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Foto #{{row.id}}{% endblock %}
+{% block body %}
+<h1>Foto #{{row.id}}</h1>
+<div class="two">
+<div>
+  <div class="card"><img class="photo" src="{{url_for('photo_image',photo_id=row.id)}}"></div>
+  <div class="card" style="margin-top:12px">
+    <strong>Mail originale</strong>
+    <p>{{row.sender_name}} &lt;{{row.sender_email}}&gt;</p>
+    <p><b>{{row.email_subject}}</b></p>
+    <div style="white-space:pre-wrap">{{row.email_body}}</div>
+  </div>
+</div>
+<div>
+<form method="post" class="card">
+  <label>Titolo</label><input name="title" value="{{row.title or ''}}">
+  <label>Autore</label><input name="author" value="{{row.author or ''}}">
+  <label>Località</label><input name="location" value="{{row.location or ''}}">
+  <label>Provincia</label><input name="province" value="{{row.province or ''}}">
+  <label>Data scatto</label><input name="shot_date" value="{{row.shot_date or ''}}">
+  <label>Testo articolo</label><textarea name="article_text" style="min-height:220px">{{row.article_text or ''}}</textarea>
+  <label>Caption Instagram</label><textarea name="instagram_text">{{row.instagram_text or ''}}</textarea>
+  <label>Alt text</label><textarea name="alt_text">{{row.alt_text or ''}}</textarea>
+  <label>Hashtag</label><textarea name="hashtags">{{row.hashtags or ''}}</textarea>
+  <button class="btn" type="submit">Salva modifiche</button>
+</form>
+<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+<form action="{{url_for('photo_ai',photo_id=row.id)}}" method="post"><button class="btn alt">✨ Elabora con AI</button></form>
+<form action="{{url_for('photo_schedule',photo_id=row.id)}}" method="post">
+  <input type="datetime-local" name="scheduled_at" style="width:auto">
+  <button class="btn" type="submit">📅 Programma</button>
+</form>
+<form action="{{url_for('photo_send',photo_id=row.id)}}" method="post"><button class="btn warn">Invia ora a Postie</button></form>
+<form action="{{url_for('photo_trash',photo_id=row.id)}}" method="post"><button class="btn danger">Scarta</button></form>
+</div>
+{% if row.last_error %}<div class="flash danger">{{row.last_error}}</div>{% endif %}
+</div>
+</div>
+{% endblock %}
