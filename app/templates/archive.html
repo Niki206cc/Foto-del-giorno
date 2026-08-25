@@ -4,8 +4,18 @@
 <table>
 <tr><th>Stato</th><th>Data</th><th>Titolo</th><th>Autore / luogo</th><th></th></tr>
 {% for r in rows %}
-<tr><td>{{r.status}}</td><td>{{r.published_at or r.updated_at}}</td><td>{{r.title}}</td><td>{{r.author}} — {{r.location}}</td>
-<td><a class="btn" href="{{url_for('photo',photo_id=r.id)}}">Apri</a></td></tr>
+<tr>
+<td>{{r.status}}</td>
+<td>{{r.published_at or r.updated_at}}</td>
+<td>{{r.title}}</td>
+<td>{{r.author}} — {{r.location}}</td>
+<td style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <a class="btn" href="{{url_for('photo',photo_id=r.id)}}">Apri</a>
+  <form action="{{url_for('photo_delete',photo_id=r.id)}}" method="post" onsubmit="return confirm('Eliminare definitivamente questa foto e il relativo record dal database?')">
+    <button class="btn danger" type="submit" title="Elimina definitivamente" aria-label="Elimina definitivamente">🗑️</button>
+  </form>
+</td>
+</tr>
 {% else %}<tr><td colspan="5">Archivio vuoto.</td></tr>{% endfor %}
 </table>
 {% endblock %}
