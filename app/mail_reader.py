@@ -10,13 +10,37 @@ from .db import connect, get_settings
 PHOTO_DIR = Path("/app/data/photos")
 ALLOWED_TYPES = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp"}
 
+
 def decode(value):
     if not value:
         return ""
     try:
         return str(make_header(decode_header(value)))
     except Exception:
-        return value
+        return str(value)
+
+
+def extract_sender(msg):
+    """Estrae il mittente in modo robusto usando From e fallback comuni."""
+    candidates = [
+        msg.get("From"),
+        msg.get("Reply-To"),
+        msg.get("Sender"),
+        msg.get("Return-Path"),
+    ]
+    for raw in candidates:
+        if not raw:
+            continue
+        decoded = decode(raw).strip()
+        addresses = email.utils.getaddresses([decoded])
+        for name, addr in addresses:
+            if addr:
+                return decode(name).strip(), addr.strip()
+        name, addr = email.utils.parseaddr(decoded)
+        if addr:
+            return decode(name).strip(), addr.strip()
+    return "", ""
+
 
 def extract_text(msg):
     candidates = []
@@ -39,6 +63,7 @@ def extract_text(msg):
             charset = msg.get_content_charset() or "utf-8"
             candidates.append(payload.decode(charset, errors="replace"))
     return "\n".join(candidates).strip()
+
 
 def sync_mail():
     s = get_settings()
@@ -64,8 +89,7 @@ def sync_mail():
         msg = email.message_from_bytes(raw[0][1])
         message_id = msg.get("Message-ID") or f"imap-{uid.decode()}"
         subject = decode(msg.get("Subject"))
-        sender_raw = decode(msg.get("From"))
-        sender_name, sender_email = email.utils.parseaddr(sender_raw)
+        sender_name, sender_email = extract_sender(msg)
         body = extract_text(msg)
         received = msg.get("Date", "")
         try:
@@ -93,7 +117,6 @@ def sync_mail():
         if not images:
             continue
 
-        # MVP: una riga per ogni immagine allegata
         with connect() as con:
             for i, (path, name, digest) in enumerate(images):
                 msg_key = message_id if len(images) == 1 else f"{message_id}#{i+1}"
