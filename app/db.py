@@ -21,6 +21,7 @@ DEFAULT_SETTINGS = {
     "postie_to": "",
 
     "postie_category": "La foto del giorno",
+    "postie_category_id": "",
     "postie_tags": "",
     "postie_status": "publish",
 
@@ -33,6 +34,7 @@ DEFAULT_SETTINGS = {
     "ai_prompt": """Sei un redattore di Montagne & Paesi. Analizza la fotografia e la mail ricevuta.
 Non inventare mai nomi di montagne, luoghi, persone o date non esplicitamente forniti.
 Usa ciò che vedi solo per descrivere elementi visivi generici.
+Individua sempre, se presente nella mail, il nome e cognome di chi ha scattato la foto e inseriscilo nel campo author.
 Restituisci SOLO JSON valido con le chiavi:
 title, author, location, province, shot_date, article_text, instagram_text, alt_text, hashtags.
 article_text deve essere un breve testo giornalistico in italiano, naturale e non enfatico.""",
