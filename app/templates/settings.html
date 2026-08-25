@@ -16,9 +16,17 @@
 
 <div class="card">
 <h2>🤖 AI</h2>
-<label>Modello</label><input name="ai_model" value="{{s.ai_model}}">
+<label>Provider</label>
+<select name="ai_provider">
+  <option value="gemini" {% if s.ai_provider=='gemini' %}selected{% endif %}>Google Gemini</option>
+  <option value="openai" {% if s.ai_provider=='openai' %}selected{% endif %}>OpenAI</option>
+</select>
+<label>API Key <span class="muted">(lascia vuoto per non cambiarla)</span></label>
+<input name="ai_api_key" type="password" autocomplete="new-password" placeholder="Incolla qui la tua API key">
+<p class="muted">La chiave viene salvata nel database locale del container. Non viene mostrata di nuovo nella pagina.</p>
+<label>Modello</label><input name="ai_model" value="{{s.ai_model}}" placeholder="gemini-2.5-flash">
+<p class="muted">Per Gemini puoi usare ad esempio <b>gemini-2.5-flash</b>, oppure un altro modello disponibile nel tuo account.</p>
 <label>Prompt</label><textarea name="ai_prompt" style="min-height:320px">{{s.ai_prompt}}</textarea>
-<p class="muted">La API key OpenAI si imposta nello Stack tramite OPENAI_API_KEY.</p>
 </div>
 
 <div class="card">
@@ -59,6 +67,14 @@
 </div>
 <p><button class="btn" type="submit">Salva impostazioni</button></p>
 </form>
+
+<div class="card" style="margin-bottom:18px">
+<h2>Test AI</h2>
+<p class="muted">Prima salva Provider, API Key e Modello, poi esegui il test.</p>
+<form action="{{url_for('settings_test_ai')}}" method="post">
+<button class="btn alt" type="submit">🔌 Testa connessione AI</button>
+</form>
+</div>
 
 <div class="card">
 <h2>Azioni manuali database</h2>
