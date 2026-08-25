@@ -2,11 +2,74 @@
 /**
  * Plugin Name: Montagne & Paesi - Foto del Giorno Meta
  * Description: Salva automaticamente autore, luogo, provincia e data delle foto inviate dal Raspberry tramite Postie come custom field WordPress utilizzabili da Elementor.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Montagne & Paesi
  */
 
 if (!defined('ABSPATH')) { exit; }
+
+function mp_fdg_save_fields($post_id, $fields) {
+    $allowed = array('foto_autore', 'foto_luogo', 'foto_provincia', 'foto_data');
+    foreach ($allowed as $key) {
+        if (isset($fields[$key]) && trim((string) $fields[$key]) !== '') {
+            update_post_meta($post_id, $key, sanitize_text_field($fields[$key]));
+        }
+    }
+}
+
+function mp_fdg_extract_v2($content) {
+    if (!preg_match('/<!--\s*FOTO_DEL_GIORNO_META_V2:([A-Za-z0-9+\/=]+)\s*-->/', $content, $match)) {
+        return null;
+    }
+    $decoded = base64_decode($match[1], true);
+    if ($decoded === false) {
+        return null;
+    }
+    $data = json_decode($decoded, true);
+    return is_array($data) ? $data : null;
+}
+
+function mp_fdg_extract_legacy($content) {
+    if (!preg_match('/<!--\s*FOTO_DEL_GIORNO_META\s*(.*?)\s*\/FOTO_DEL_GIORNO_META\s*-->/s', $content, $match)) {
+        return null;
+    }
+
+    $payload = html_entity_decode($match[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $keys = array('foto_autore', 'foto_luogo', 'foto_provincia', 'foto_data');
+    $fields = array();
+
+    foreach ($keys as $index => $key) {
+        $next_keys = array_slice($keys, $index + 1);
+        $end = $next_keys ? '(?=\s*(?:' . implode('|', array_map('preg_quote', $next_keys)) . ')=|$)' : '$';
+        if (preg_match('/(?:^|\s)' . preg_quote($key, '/') . '=\s*(.*?)' . $end . '/s', $payload, $m)) {
+            $fields[$key] = trim($m[1]);
+        }
+    }
+    return $fields ?: null;
+}
+
+function mp_fdg_repair_broken_meta($post_id) {
+    $author = (string) get_post_meta($post_id, 'foto_autore', true);
+    if ($author === '' || (strpos($author, 'foto_luogo=') === false && strpos($author, 'foto_provincia=') === false && strpos($author, 'foto_data=') === false)) {
+        return;
+    }
+
+    $payload = 'foto_autore=' . $author;
+    $keys = array('foto_autore', 'foto_luogo', 'foto_provincia', 'foto_data');
+    $fields = array();
+
+    foreach ($keys as $index => $key) {
+        $next_keys = array_slice($keys, $index + 1);
+        $end = $next_keys ? '(?=\s*(?:' . implode('|', array_map('preg_quote', $next_keys)) . ')=|$)' : '$';
+        if (preg_match('/(?:^|\s)' . preg_quote($key, '/') . '=\s*(.*?)' . $end . '/s', $payload, $m)) {
+            $fields[$key] = trim($m[1]);
+        }
+    }
+
+    if ($fields) {
+        mp_fdg_save_fields($post_id, $fields);
+    }
+}
 
 function mp_fdg_extract_meta($post_id) {
     if (wp_is_post_revision($post_id) || get_post_type($post_id) !== 'post') {
@@ -14,28 +77,27 @@ function mp_fdg_extract_meta($post_id) {
     }
 
     $content = get_post_field('post_content', $post_id);
-    if (!$content || strpos($content, 'FOTO_DEL_GIORNO_META') === false) {
+    if (!$content) {
+        mp_fdg_repair_broken_meta($post_id);
         return;
     }
 
-    if (!preg_match('/<!--\s*FOTO_DEL_GIORNO_META\s*(.*?)\s*\/FOTO_DEL_GIORNO_META\s*-->/s', $content, $match)) {
-        return;
+    $fields = mp_fdg_extract_v2($content);
+    if (!$fields) {
+        $fields = mp_fdg_extract_legacy($content);
     }
 
-    $allowed = array('foto_autore', 'foto_luogo', 'foto_provincia', 'foto_data');
-    $payload = html_entity_decode($match[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $lines = preg_split('/\R/', trim($payload));
-
-    foreach ($lines as $line) {
-        if (strpos($line, '=') === false) { continue; }
-        list($key, $value) = array_map('trim', explode('=', $line, 2));
-        if (in_array($key, $allowed, true) && $value !== '') {
-            update_post_meta($post_id, $key, sanitize_text_field($value));
-        }
+    if ($fields) {
+        mp_fdg_save_fields($post_id, $fields);
     }
 
-    // Rimuove il blocco tecnico dal contenuto dopo aver salvato i custom field.
-    $clean = preg_replace('/<!--\s*FOTO_DEL_GIORNO_META\s*.*?\s*\/FOTO_DEL_GIORNO_META\s*-->/s', '', $content);
+    mp_fdg_repair_broken_meta($post_id);
+
+    $clean = preg_replace(array(
+        '/<!--\s*FOTO_DEL_GIORNO_META_V2:[A-Za-z0-9+\/=]+\s*-->/',
+        '/<!--\s*FOTO_DEL_GIORNO_META\s*.*?\s*\/FOTO_DEL_GIORNO_META\s*-->/s'
+    ), '', $content);
+
     if ($clean !== $content) {
         remove_action('save_post', 'mp_fdg_extract_meta', 20);
         wp_update_post(array('ID' => $post_id, 'post_content' => $clean));
@@ -44,8 +106,6 @@ function mp_fdg_extract_meta($post_id) {
 }
 add_action('save_post', 'mp_fdg_extract_meta', 20);
 
-// Postie espone anche questo hook dopo la creazione del post: lo usiamo come
-// seconda possibilità, senza dipendere da add-on commerciali.
 function mp_fdg_postie_after($post) {
     $post_id = 0;
     if (is_numeric($post)) {
