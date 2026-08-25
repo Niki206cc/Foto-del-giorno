@@ -5,9 +5,11 @@ from pathlib import Path
 from datetime import datetime
 from .db import connect, get_settings
 
+
 def _paragraphs(text):
     chunks = [x.strip() for x in (text or "").split("\n\n") if x.strip()]
     return "\n".join(f"<p>{html.escape(x).replace(chr(10), '<br>')}</p>" for x in chunks)
+
 
 def _footer_html(text, public_email, site_home_url):
     safe = html.escape(text or "").replace(chr(10), "<br>")
@@ -25,35 +27,58 @@ def _footer_html(text, public_email, site_home_url):
     chunks = [x.strip() for x in safe.split("<br><br>") if x.strip()]
     return "\n".join(f"<p>{x}</p>" for x in chunks)
 
+
+def _author_html(author):
+    author = (author or "").strip()
+    if not author:
+        return ""
+    return f"<p><strong>Foto di:</strong> {html.escape(author)}</p>"
+
+
 def build_postie_message(row):
     s = get_settings()
     category = (s.get("postie_category") or "").strip()
-    # Postie supporta la categoria nel subject in [parentesi quadre].
-    # La categoria deve esistere già in WordPress e l'opzione Postie deve essere attiva.
-    subject = f"[{category}] {row['title']}" if category else row["title"]
+    category_id = (s.get("postie_category_id") or "").strip()
+
+    # Postie supporta categoria o ID categoria nel subject tra parentesi quadre.
+    # Se è configurato l'ID numerico, viene preferito perché evita ambiguità tra nomi simili.
+    category_token = category_id if category_id.isdigit() else category
+    subject = f"[{category_token}] {row['title']}" if category_token else row["title"]
 
     public_email = (s.get("photo_public_email") or "").strip()
     site_home_url = (s.get("site_home_url") or "https://www.montagneepaesi.com/").strip()
     footer = (s.get("footer_text") or "").replace("{email_foto}", public_email)
     tags = (s.get("postie_tags") or "").strip()
-    status = (s.get("postie_status") or "publish").strip()
 
-    metadata = [f"status: {status}"]
-    if tags:
-        metadata.append(f"tags: {tags}")
-
-    body_html = "\n".join([
-        *[f"<p style='display:none'>{html.escape(x)}</p>" for x in metadata],
+    # Non inseriamo più "status: publish" nell'HTML: WordPress/plugin social
+    # potevano usarlo come primo testo dell'anteprima. Lo stato resta gestito
+    # dalla configurazione predefinita di Postie.
+    body_parts = [
+        "<p><strong>Foto del giorno</strong></p>",
         _paragraphs(row["article_text"]),
+        _author_html(row["author"]),
+    ]
+
+    if tags:
+        # Manteniamo i tag in fondo per non sporcare l'anteprima social.
+        body_parts.append(f"<p style='display:none'>tags: {html.escape(tags)}</p>")
+
+    body_parts.extend([
         "<hr>",
-        _footer_html(footer, public_email, site_home_url)
+        _footer_html(footer, public_email, site_home_url),
     ])
+    body_html = "\n".join(x for x in body_parts if x)
+
+    plain_parts = ["Foto del giorno", row["article_text"] or ""]
+    if (row["author"] or "").strip():
+        plain_parts.append(f"Foto di: {row['author'].strip()}")
+    plain_parts.append(footer)
 
     msg = EmailMessage()
     msg["Subject"] = subject
     msg["From"] = s["smtp_from"] or s["smtp_user"]
     msg["To"] = s["postie_to"]
-    msg.set_content((row["article_text"] or "") + "\n\n" + footer)
+    msg.set_content("\n\n".join(x for x in plain_parts if x))
     msg.add_alternative(body_html, subtype="html")
 
     image_path = Path(row["image_path"])
@@ -62,6 +87,7 @@ def build_postie_message(row):
         subtype = "jpeg" if ext in (".jpg", ".jpeg") else ext.lstrip(".") or "jpeg"
         msg.add_attachment(image_path.read_bytes(), maintype="image", subtype=subtype, filename=row["image_name"] or image_path.name)
     return msg
+
 
 def send_to_postie(photo_id):
     s = get_settings()
