@@ -50,7 +50,7 @@ def archive():
 @app.route("/photo/<int:photo_id>", methods=["GET", "POST"])
 def photo(photo_id):
     if request.method == "POST":
-        fields = ["title","author","location","province","shot_date","article_text","instagram_text","alt_text","hashtags"]
+        fields = ["title","author","location","province","shot_date","article_text"]
         vals = [request.form.get(f, "") for f in fields]
         with connect() as con:
             con.execute(f"""
@@ -131,6 +131,18 @@ def photo_trash(photo_id):
     flash("Foto spostata nel cestino.", "success")
     return redirect(url_for("index"))
 
+@app.post("/photo/<int:photo_id>/delete")
+def photo_delete(photo_id):
+    with connect() as con:
+        row = con.execute("SELECT image_path FROM photos WHERE id=?", (photo_id,)).fetchone()
+        if not row:
+            abort(404)
+        if row["image_path"]:
+            Path(row["image_path"]).unlink(missing_ok=True)
+        con.execute("DELETE FROM photos WHERE id=?", (photo_id,))
+    flash("Foto eliminata definitivamente dall'archivio.", "success")
+    return redirect(url_for("archive"))
+
 @app.post("/sync")
 def sync():
     try:
@@ -148,7 +160,7 @@ def settings():
             "smtp_host","smtp_port","smtp_tls","smtp_user","smtp_password","smtp_from","postie_to",
             "postie_category","postie_tags","postie_status","publish_time","auto_schedule",
             "ai_provider","ai_api_key","ai_model","ai_prompt",
-            "footer_text","photo_public_email","cleanup_published_days","cleanup_trash_days"
+            "footer_text","photo_public_email","site_home_url","cleanup_published_days","cleanup_trash_days"
         ]
         current = get_settings()
         values = {}
