@@ -5,7 +5,7 @@ from flask import Flask, render_template, request, redirect, url_for, flash, sen
 
 from .db import init_db, connect, get_settings, set_settings
 from .mail_reader import sync_mail
-from .ai_service import analyze_photo
+from .ai_service import analyze_photo, test_ai_connection
 from .publisher import send_to_postie
 from .scheduler import start_scheduler, next_slot
 
@@ -146,7 +146,8 @@ def settings():
         allowed = [
             "imap_host","imap_port","imap_ssl","imap_user","imap_password","imap_folder","imap_poll_minutes",
             "smtp_host","smtp_port","smtp_tls","smtp_user","smtp_password","smtp_from","postie_to",
-            "postie_category","postie_tags","postie_status","publish_time","auto_schedule","ai_model","ai_prompt",
+            "postie_category","postie_tags","postie_status","publish_time","auto_schedule",
+            "ai_provider","ai_api_key","ai_model","ai_prompt",
             "footer_text","photo_public_email","cleanup_published_days","cleanup_trash_days"
         ]
         current = get_settings()
@@ -154,7 +155,7 @@ def settings():
         for k in allowed:
             if k in ("imap_ssl","smtp_tls","auto_schedule"):
                 values[k] = "1" if request.form.get(k) else "0"
-            elif k in ("imap_password","smtp_password") and not request.form.get(k):
+            elif k in ("imap_password","smtp_password","ai_api_key") and not request.form.get(k):
                 values[k] = current.get(k, "")
             else:
                 values[k] = request.form.get(k, "")
@@ -162,6 +163,15 @@ def settings():
         flash("Impostazioni salvate. Riavvia il container se cambi l'intervallo IMAP.", "success")
         return redirect(url_for("settings"))
     return render_template("settings.html", s=get_settings())
+
+@app.post("/settings/test-ai")
+def settings_test_ai():
+    try:
+        message = test_ai_connection()
+        flash(message, "success")
+    except Exception as e:
+        flash(f"Test AI fallito: {e}", "danger")
+    return redirect(url_for("settings"))
 
 @app.post("/maintenance/clear")
 def maintenance_clear():
