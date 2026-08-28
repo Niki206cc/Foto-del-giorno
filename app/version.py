@@ -1,6 +1,15 @@
-APP_VERSION = "1.2.6"
+APP_VERSION = "1.2.7"
 
 CHANGELOG = [
+    {
+        "version": "1.2.7",
+        "date": "28/08/2026",
+        "changes": [
+            "Corretto il saluto della mail di ringraziamento: ora usa il campo 'Nome e cognome' del modulo Elementor invece del nome tecnico del mittente.",
+            "Se il nome del modulo non è disponibile, la mail usa semplicemente 'Ciao,' senza mostrare 'Montagne & Paesi'.",
+            "Aggiunte piccole icone davanti ai link di sito, Instagram, Facebook, Telegram e WhatsApp nella mail HTML e nella versione testuale."
+        ],
+    },
     {
         "version": "1.2.6",
         "date": "28/08/2026",
