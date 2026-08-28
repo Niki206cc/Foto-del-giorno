@@ -79,6 +79,7 @@ def init_db():
             image_hash TEXT,
 
             author TEXT,
+            instagram_username TEXT,
             location TEXT,
             province TEXT,
             shot_date TEXT,
@@ -103,6 +104,11 @@ def init_db():
         CREATE INDEX IF NOT EXISTS idx_photos_scheduled_at ON photos(scheduled_at);
         CREATE INDEX IF NOT EXISTS idx_photos_hash ON photos(image_hash);
         """)
+
+        columns = {r[1] for r in con.execute("PRAGMA table_info(photos)").fetchall()}
+        if "instagram_username" not in columns:
+            con.execute("ALTER TABLE photos ADD COLUMN instagram_username TEXT")
+
         for k, v in DEFAULT_SETTINGS.items():
             con.execute("INSERT OR IGNORE INTO settings(key, value) VALUES (?, ?)", (k, v))
 
