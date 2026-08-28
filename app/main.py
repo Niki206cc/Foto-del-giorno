@@ -163,12 +163,14 @@ def settings():
             "smtp_host", "smtp_port", "smtp_tls", "smtp_user", "smtp_password", "smtp_from", "postie_to",
             "postie_category", "postie_category_id", "postie_tags", "postie_status", "publish_time", "auto_schedule",
             "ai_provider", "ai_api_key", "ai_model", "ai_prompt",
-            "footer_text", "photo_public_email", "site_home_url", "cleanup_published_days", "cleanup_trash_days"
+            "footer_text", "photo_public_email", "site_home_url",
+            "thank_you_enabled", "thank_you_subject", "social_instagram_url", "social_facebook_url", "social_telegram_url", "social_whatsapp_url",
+            "cleanup_published_days", "cleanup_trash_days"
         ]
         current = get_settings()
         values = {}
         for k in allowed:
-            if k in ("imap_ssl", "smtp_tls", "auto_schedule"):
+            if k in ("imap_ssl", "smtp_tls", "auto_schedule", "thank_you_enabled"):
                 values[k] = "1" if request.form.get(k) else "0"
             elif k in ("imap_password", "smtp_password", "ai_api_key") and not request.form.get(k):
                 values[k] = current.get(k, "")
