@@ -16,6 +16,7 @@
 <form method="post" class="card">
   <label>Titolo</label><input name="title" value="{{row.title or ''}}">
   <label>Autore</label><input name="author" value="{{row.author or ''}}">
+  <label>Instagram <span class="muted">(facoltativo, senza @)</span></label><input name="instagram_username" value="{{row.instagram_username or ''}}" placeholder="nomeutente">
   <label>Località</label><input name="location" value="{{row.location or ''}}">
   <label>Provincia</label><input name="province" value="{{row.province or ''}}">
   <label>Data scatto</label><input name="shot_date" value="{{row.shot_date or ''}}">
