@@ -1,6 +1,18 @@
-APP_VERSION = "1.2.4"
+APP_VERSION = "1.2.5"
 
 CHANGELOG = [
+    {
+        "version": "1.2.5",
+        "date": "28/08/2026",
+        "changes": [
+            "Aggiunto supporto al nome utente Instagram facoltativo inviato dal modulo del sito.",
+            "Il sistema riconosce automaticamente campi email etichettati Instagram, Nome utente Instagram o Username Instagram.",
+            "Aggiunto il campo Instagram nella schermata di modifica della foto.",
+            "Se presente, il profilo Instagram viene pubblicato nel testo dell'articolo come link cliccabile a @nomeutente.",
+            "Aggiunto il custom field WordPress foto_instagram utilizzabile anche nei template Elementor.",
+            "Aggiornato il plugin WordPress Foto del Giorno Meta alla versione 1.2.0."
+        ],
+    },
     {
         "version": "1.2.4",
         "date": "25/08/2026",
