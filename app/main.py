@@ -15,21 +15,17 @@ app.secret_key = os.getenv("APP_SECRET_KEY", "cambia-questa-chiave")
 init_db()
 start_scheduler()
 
-
 @app.context_processor
 def inject_app_info():
     return {"app_version": APP_VERSION}
-
 
 @app.get("/health")
 def health():
     return {"ok": True, "version": APP_VERSION}
 
-
 @app.get("/changelog")
 def changelog():
     return render_template("changelog.html", changelog=CHANGELOG)
-
 
 @app.get("/")
 def index():
@@ -42,16 +38,11 @@ def index():
         """).fetchall()
     return render_template("index.html", rows=rows, counts=counts)
 
-
 @app.get("/queue")
 def queue():
     with connect() as con:
-        rows = con.execute("""
-            SELECT * FROM photos WHERE status='scheduled'
-            ORDER BY scheduled_at ASC
-        """).fetchall()
+        rows = con.execute("SELECT * FROM photos WHERE status='scheduled' ORDER BY scheduled_at ASC").fetchall()
     return render_template("queue.html", rows=rows)
-
 
 @app.get("/archive")
 def archive():
@@ -62,11 +53,10 @@ def archive():
         """).fetchall()
     return render_template("archive.html", rows=rows)
 
-
 @app.route("/photo/<int:photo_id>", methods=["GET", "POST"])
 def photo(photo_id):
     if request.method == "POST":
-        fields = ["title", "author", "location", "province", "shot_date", "article_text"]
+        fields = ["title", "author", "instagram_username", "location", "province", "shot_date", "article_text"]
         vals = [request.form.get(f, "") for f in fields]
         with connect() as con:
             con.execute(f"""
@@ -82,7 +72,6 @@ def photo(photo_id):
         abort(404)
     return render_template("photo.html", row=row)
 
-
 @app.get("/photo/<int:photo_id>/image")
 def photo_image(photo_id):
     with connect() as con:
@@ -90,7 +79,6 @@ def photo_image(photo_id):
     if not row or not row["image_path"] or not Path(row["image_path"]).exists():
         abort(404)
     return send_file(row["image_path"])
-
 
 @app.post("/photo/<int:photo_id>/ai")
 def photo_ai(photo_id):
@@ -116,14 +104,10 @@ def photo_ai(photo_id):
         flash(str(e), "danger")
     return redirect(url_for("photo", photo_id=photo_id))
 
-
 @app.post("/photo/<int:photo_id>/schedule")
 def photo_schedule(photo_id):
     raw = request.form.get("scheduled_at", "").strip()
-    if raw:
-        dt = datetime.fromisoformat(raw).astimezone()
-    else:
-        dt = next_slot()
+    dt = datetime.fromisoformat(raw).astimezone() if raw else next_slot()
     with connect() as con:
         con.execute("""
             UPDATE photos SET status='scheduled', scheduled_at=?, last_error=NULL,
@@ -131,7 +115,6 @@ def photo_schedule(photo_id):
         """, (dt.isoformat(), photo_id))
     flash(f"Programmata per {dt.strftime('%d/%m/%Y %H:%M')}.", "success")
     return redirect(url_for("queue"))
-
 
 @app.post("/photo/<int:photo_id>/send")
 def photo_send(photo_id):
@@ -144,14 +127,12 @@ def photo_send(photo_id):
         flash(str(e), "danger")
     return redirect(url_for("photo", photo_id=photo_id))
 
-
 @app.post("/photo/<int:photo_id>/trash")
 def photo_trash(photo_id):
     with connect() as con:
         con.execute("UPDATE photos SET status='trash', updated_at=CURRENT_TIMESTAMP WHERE id=?", (photo_id,))
     flash("Foto spostata nel cestino.", "success")
     return redirect(url_for("index"))
-
 
 @app.post("/photo/<int:photo_id>/delete")
 def photo_delete(photo_id):
@@ -165,7 +146,6 @@ def photo_delete(photo_id):
     flash("Foto eliminata definitivamente dall'archivio.", "success")
     return redirect(url_for("archive"))
 
-
 @app.post("/sync")
 def sync():
     try:
@@ -174,7 +154,6 @@ def sync():
     except Exception as e:
         flash(str(e), "danger")
     return redirect(url_for("index"))
-
 
 @app.route("/settings", methods=["GET", "POST"])
 def settings():
@@ -200,7 +179,6 @@ def settings():
         return redirect(url_for("settings"))
     return render_template("settings.html", s=get_settings())
 
-
 @app.post("/settings/test-ai")
 def settings_test_ai():
     try:
@@ -209,7 +187,6 @@ def settings_test_ai():
     except Exception as e:
         flash(f"Test AI fallito: {e}", "danger")
     return redirect(url_for("settings"))
-
 
 @app.post("/maintenance/clear")
 def maintenance_clear():
