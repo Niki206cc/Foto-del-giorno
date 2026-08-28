@@ -47,6 +47,13 @@ Potresti vederla pubblicata nella rubrica \"La foto del giorno\".""",
     "photo_public_email": "",
     "site_home_url": "https://www.montagneepaesi.com/",
 
+    "thank_you_enabled": "1",
+    "thank_you_subject": "Grazie per averci inviato la tua foto!",
+    "social_instagram_url": "",
+    "social_facebook_url": "",
+    "social_telegram_url": "https://t.me/montagnepaesinews",
+    "social_whatsapp_url": "https://www.whatsapp.com/channel/0029Vb7fcHT8aKvFAuCIfm0c",
+
     "cleanup_published_days": "90",
     "cleanup_trash_days": "30",
 }
