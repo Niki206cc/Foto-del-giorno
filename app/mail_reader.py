@@ -56,6 +56,20 @@ def extract_text(msg):
     return "\n".join(candidates).strip()
 
 
+def extract_instagram_username(text):
+    """Estrae un username Instagram da campi del modulo tipo Instagram: @nomeutente."""
+    text = text or ""
+    patterns = [
+        r"(?:instagram|nome\s*utente\s*instagram|username\s*instagram)\s*[:\-]\s*(?:https?://(?:www\.)?instagram\.com/)?@?([A-Za-z0-9._]{1,30})",
+        r"(?:instagram|nome\s*utente\s*instagram|username\s*instagram)\s+@?([A-Za-z0-9._]{1,30})",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.I)
+        if match:
+            return match.group(1).strip().lstrip("@").rstrip("/")
+    return ""
+
+
 def _already_imported(message_id):
     with connect() as con:
         row = con.execute(
@@ -66,7 +80,6 @@ def _already_imported(message_id):
 
 
 def _image_part_info(part):
-    """Riconosce immagini anche quando Elementor/Post SMTP usa MIME generico."""
     ctype = (part.get_content_type() or "").lower()
     filename = decode(part.get_filename()).strip()
     ext = Path(filename).suffix.lower() if filename else ""
@@ -75,8 +88,6 @@ def _image_part_info(part):
         fallback_ext = ALLOWED_TYPES[ctype]
         return filename or f"foto{fallback_ext}", fallback_ext
 
-    # Alcuni invii WordPress/Elementor arrivano come application/octet-stream
-    # pur avendo un filename .jpg/.jpeg/.png/.webp corretto.
     if ext in ALLOWED_EXTENSIONS:
         normalized_ext = ".jpg" if ext == ".jpeg" else ext
         return filename, normalized_ext
@@ -123,6 +134,7 @@ def sync_mail():
         subject = decode(msg.get("Subject"))
         sender_name, sender_email = extract_sender(msg)
         body = extract_text(msg)
+        instagram_username = extract_instagram_username(body)
         received = msg.get("Date", "")
         try:
             received_iso = email.utils.parsedate_to_datetime(received).isoformat()
@@ -158,10 +170,10 @@ def sync_mail():
                     con.execute("""
                         INSERT INTO photos(
                             message_id, sender_email, sender_name, email_subject, email_body,
-                            received_at, image_path, image_name, image_hash, status
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')
+                            received_at, image_path, image_name, image_hash, instagram_username, status
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')
                     """, (msg_key, sender_email, sender_name, subject, body, received_iso,
-                          str(path), name, digest))
+                          str(path), name, digest, instagram_username))
                     inserted += 1
                     added += 1
                 except Exception:
