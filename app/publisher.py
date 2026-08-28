@@ -1,6 +1,7 @@
 import base64
 import html
 import json
+import re
 import smtplib
 from email.message import EmailMessage
 from pathlib import Path
@@ -34,10 +35,26 @@ def _author_html(author):
     return f"<p><strong>Foto di:</strong> {html.escape(author)}</p>"
 
 
+def _clean_instagram_username(value):
+    value = (value or "").strip()
+    value = re.sub(r"^https?://(?:www\.)?instagram\.com/", "", value, flags=re.I)
+    value = value.strip().lstrip("@").strip("/")
+    return value if re.fullmatch(r"[A-Za-z0-9._]{1,30}", value) else ""
+
+
+def _instagram_html(username):
+    username = _clean_instagram_username(username)
+    if not username:
+        return ""
+    safe_user = html.escape(username)
+    url = f"https://www.instagram.com/{username}/"
+    return f'<p><strong>Instagram:</strong> <a href="{html.escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">@{safe_user}</a></p>'
+
+
 def _metadata_marker(row):
-    """Blocco tecnico robusto letto dal plugin WordPress incluso nel repository."""
     fields = {
         "foto_autore": (row["author"] or "").strip(),
+        "foto_instagram": _clean_instagram_username(row["instagram_username"]),
         "foto_luogo": (row["location"] or "").strip(),
         "foto_provincia": (row["province"] or "").strip(),
         "foto_data": (row["shot_date"] or "").strip(),
@@ -62,11 +79,13 @@ def build_postie_message(row):
     site_home_url = (s.get("site_home_url") or "https://www.montagneepaesi.com/").strip()
     footer = (s.get("footer_text") or "").replace("{email_foto}", public_email)
     tags = (s.get("postie_tags") or "").strip()
+    instagram_username = _clean_instagram_username(row["instagram_username"])
 
     body_parts = [
         "<p><strong>Foto del giorno</strong></p>",
         _paragraphs(row["article_text"]),
         _author_html(row["author"]),
+        _instagram_html(instagram_username),
         _metadata_marker(row),
     ]
     if tags:
@@ -77,6 +96,8 @@ def build_postie_message(row):
     plain_parts = ["Foto del giorno", row["article_text"] or ""]
     if (row["author"] or "").strip():
         plain_parts.append(f"Foto di: {row['author'].strip()}")
+    if instagram_username:
+        plain_parts.append(f"Instagram: @{instagram_username} - https://www.instagram.com/{instagram_username}/")
     plain_parts.append(footer)
 
     msg = EmailMessage()
