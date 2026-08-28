@@ -1,6 +1,20 @@
-APP_VERSION = "1.2.5"
+APP_VERSION = "1.2.6"
 
 CHANGELOG = [
+    {
+        "version": "1.2.6",
+        "date": "28/08/2026",
+        "changes": [
+            "La riga iniziale degli articoli ora mostra 'La foto del giorno - Nome Autore' quando l'autore è disponibile, così può comparire anche nelle anteprime/condivisioni WhatsApp.",
+            "Aggiunto il custom field WordPress foto_instagram_url con il link completo al profilo Instagram.",
+            "Aggiunto lo shortcode WordPress [foto_instagram_link] per mostrare @nomeutente come link cliccabile nei Loop Elementor.",
+            "Il parser Instagram accetta nomeutente, @nomeutente e URL Instagram nei campi del modulo/email.",
+            "Aggiunta email automatica di ringraziamento dopo la ricezione di una foto dal modulo.",
+            "Aggiunte nelle impostazioni le URL di sito, Instagram, Facebook, Telegram e WhatsApp da inserire nella mail di ringraziamento.",
+            "Preimpostati i canali Telegram e WhatsApp ufficiali rilevati sul sito Montagne & Paesi.",
+            "Aggiornato il plugin WordPress Foto del Giorno Meta alla versione 1.3.0."
+        ],
+    },
     {
         "version": "1.2.5",
         "date": "28/08/2026",
