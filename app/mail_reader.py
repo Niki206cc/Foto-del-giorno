@@ -1,8 +1,11 @@
 import email
 import hashlib
+import html
 import imaplib
 import re
+import smtplib
 from email.header import decode_header, make_header
+from email.message import EmailMessage
 from pathlib import Path
 from datetime import datetime
 from .db import connect, get_settings
@@ -57,7 +60,6 @@ def extract_text(msg):
 
 
 def extract_instagram_username(text):
-    """Estrae un username Instagram da campi del modulo tipo Instagram: @nomeutente."""
     text = text or ""
     patterns = [
         r"(?:instagram|nome\s*utente\s*instagram|username\s*instagram)\s*[:\-]\s*(?:https?://(?:www\.)?instagram\.com/)?@?([A-Za-z0-9._]{1,30})",
@@ -68,6 +70,93 @@ def extract_instagram_username(text):
         if match:
             return match.group(1).strip().lstrip("@").rstrip("/")
     return ""
+
+
+def extract_form_email(text):
+    text = text or ""
+    patterns = [
+        r"(?im)^\s*(?:email|e-mail|indirizzo\s+email)\s*:\s*([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})\s*$",
+        r"(?i)\b([A-Z0-9._%+\-]+@[A-Z0-9.\-]+\.[A-Z]{2,})\b",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text, flags=re.I | re.M)
+        if match:
+            return match.group(1).strip()
+    return ""
+
+
+def _social_link(label, url):
+    url = (url or "").strip()
+    if not url:
+        return ""
+    return f'<li><a href="{html.escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">{html.escape(label)}</a></li>'
+
+
+def send_thank_you_email(recipient, name=""):
+    s = get_settings()
+    if s.get("thank_you_enabled") != "1" or not recipient:
+        return False
+    needed = ["smtp_host", "smtp_user", "smtp_password"]
+    if any(not s.get(k) for k in needed):
+        return False
+
+    greeting = f"Ciao {html.escape(name.strip())}," if name and name.strip() else "Ciao,"
+    social_links = "".join(filter(None, [
+        _social_link("Sito Montagne & Paesi", s.get("site_home_url")),
+        _social_link("Instagram", s.get("social_instagram_url")),
+        _social_link("Facebook", s.get("social_facebook_url")),
+        _social_link("Telegram", s.get("social_telegram_url")),
+        _social_link("WhatsApp", s.get("social_whatsapp_url")),
+    ]))
+
+    body_html = f"""
+    <p>{greeting}</p>
+    <p>grazie per aver inviato la tua foto a <strong>Montagne &amp; Paesi</strong>.</p>
+    <p>La redazione la valuterà per la pubblicazione nella rubrica <strong>La foto del giorno</strong>.</p>
+    <p>Nel frattempo puoi seguirci qui:</p>
+    <ul>{social_links}</ul>
+    <p>Grazie per contribuire a raccontare il nostro territorio!</p>
+    <p><strong>Montagne &amp; Paesi</strong></p>
+    """.strip()
+
+    plain_links = []
+    for label, key in [
+        ("Sito", "site_home_url"),
+        ("Instagram", "social_instagram_url"),
+        ("Facebook", "social_facebook_url"),
+        ("Telegram", "social_telegram_url"),
+        ("WhatsApp", "social_whatsapp_url"),
+    ]:
+        url = (s.get(key) or "").strip()
+        if url:
+            plain_links.append(f"{label}: {url}")
+    greeting_plain = f"Ciao {name.strip()}," if name and name.strip() else "Ciao,"
+    body_plain = "\n\n".join([
+        greeting_plain,
+        "Grazie per aver inviato la tua foto a Montagne & Paesi.",
+        "La redazione la valuterà per la pubblicazione nella rubrica La foto del giorno.",
+        "Nel frattempo puoi seguirci qui:\n" + "\n".join(plain_links),
+        "Grazie per contribuire a raccontare il nostro territorio!\n\nMontagne & Paesi",
+    ])
+
+    msg = EmailMessage()
+    msg["Subject"] = (s.get("thank_you_subject") or "Grazie per averci inviato la tua foto!").strip()
+    msg["From"] = s.get("smtp_from") or s.get("smtp_user")
+    msg["To"] = recipient
+    msg.set_content(body_plain)
+    msg.add_alternative(body_html, subtype="html")
+
+    smtp = smtplib.SMTP(s["smtp_host"], int(s.get("smtp_port") or 587), timeout=30)
+    try:
+        smtp.ehlo()
+        if s.get("smtp_tls") == "1":
+            smtp.starttls()
+            smtp.ehlo()
+        smtp.login(s["smtp_user"], s["smtp_password"])
+        smtp.send_message(msg)
+    finally:
+        smtp.quit()
+    return True
 
 
 def _already_imported(message_id):
@@ -117,6 +206,7 @@ def sync_mail():
     added = 0
     deleted = 0
     skipped = 0
+    thanked = 0
 
     for seq in data[0].split():
         typ, raw = client.fetch(seq, "(RFC822)")
@@ -135,6 +225,7 @@ def sync_mail():
         sender_name, sender_email = extract_sender(msg)
         body = extract_text(msg)
         instagram_username = extract_instagram_username(body)
+        form_email = extract_form_email(body)
         received = msg.get("Date", "")
         try:
             received_iso = email.utils.parsedate_to_datetime(received).isoformat()
@@ -172,7 +263,7 @@ def sync_mail():
                             message_id, sender_email, sender_name, email_subject, email_body,
                             received_at, image_path, image_name, image_hash, instagram_username, status
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')
-                    """, (msg_key, sender_email, sender_name, subject, body, received_iso,
+                    """, (msg_key, form_email or sender_email, sender_name, subject, body, received_iso,
                           str(path), name, digest, instagram_username))
                     inserted += 1
                     added += 1
@@ -180,6 +271,12 @@ def sync_mail():
                     pass
 
         if inserted > 0:
+            recipient = form_email or sender_email
+            try:
+                if recipient and send_thank_you_email(recipient, sender_name):
+                    thanked += 1
+            except Exception:
+                pass
             client.store(seq, "+FLAGS", "\\Deleted")
             deleted += 1
 
@@ -189,8 +286,9 @@ def sync_mail():
 
     return {
         "ok": True,
-        "message": f"Sincronizzazione completata: {added} foto nuove, {deleted} email eliminate, {skipped} senza foto",
+        "message": f"Sincronizzazione completata: {added} foto nuove, {deleted} email eliminate, {skipped} senza foto, {thanked} ringraziamenti inviati",
         "added": added,
         "deleted": deleted,
         "skipped": skipped,
+        "thanked": thanked,
     }
