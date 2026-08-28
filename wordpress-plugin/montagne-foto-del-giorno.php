@@ -1,15 +1,15 @@
 <?php
 /**
  * Plugin Name: Montagne & Paesi - Foto del Giorno Meta
- * Description: Salva automaticamente autore, luogo, provincia e data delle foto inviate dal Raspberry tramite Postie come custom field WordPress utilizzabili da Elementor.
- * Version: 1.1.0
+ * Description: Salva automaticamente autore, Instagram, luogo, provincia e data delle foto inviate dal Raspberry tramite Postie come custom field WordPress utilizzabili da Elementor.
+ * Version: 1.2.0
  * Author: Montagne & Paesi
  */
 
 if (!defined('ABSPATH')) { exit; }
 
 function mp_fdg_save_fields($post_id, $fields) {
-    $allowed = array('foto_autore', 'foto_luogo', 'foto_provincia', 'foto_data');
+    $allowed = array('foto_autore', 'foto_instagram', 'foto_luogo', 'foto_provincia', 'foto_data');
     foreach ($allowed as $key) {
         if (isset($fields[$key]) && trim((string) $fields[$key]) !== '') {
             update_post_meta($post_id, $key, sanitize_text_field($fields[$key]));
@@ -35,12 +35,13 @@ function mp_fdg_extract_legacy($content) {
     }
 
     $payload = html_entity_decode($match[1], ENT_QUOTES | ENT_HTML5, 'UTF-8');
-    $keys = array('foto_autore', 'foto_luogo', 'foto_provincia', 'foto_data');
+    $keys = array('foto_autore', 'foto_instagram', 'foto_luogo', 'foto_provincia', 'foto_data');
     $fields = array();
 
     foreach ($keys as $index => $key) {
         $next_keys = array_slice($keys, $index + 1);
-        $end = $next_keys ? '(?=\s*(?:' . implode('|', array_map('preg_quote', $next_keys)) . ')=|$)' : '$';
+        $escaped = array_map(function($v) { return preg_quote($v, '/'); }, $next_keys);
+        $end = $next_keys ? '(?=\s*(?:' . implode('|', $escaped) . ')=|$)' : '$';
         if (preg_match('/(?:^|\s)' . preg_quote($key, '/') . '=\s*(.*?)' . $end . '/s', $payload, $m)) {
             $fields[$key] = trim($m[1]);
         }
@@ -55,12 +56,13 @@ function mp_fdg_repair_broken_meta($post_id) {
     }
 
     $payload = 'foto_autore=' . $author;
-    $keys = array('foto_autore', 'foto_luogo', 'foto_provincia', 'foto_data');
+    $keys = array('foto_autore', 'foto_instagram', 'foto_luogo', 'foto_provincia', 'foto_data');
     $fields = array();
 
     foreach ($keys as $index => $key) {
         $next_keys = array_slice($keys, $index + 1);
-        $end = $next_keys ? '(?=\s*(?:' . implode('|', array_map('preg_quote', $next_keys)) . ')=|$)' : '$';
+        $escaped = array_map(function($v) { return preg_quote($v, '/'); }, $next_keys);
+        $end = $next_keys ? '(?=\s*(?:' . implode('|', $escaped) . ')=|$)' : '$';
         if (preg_match('/(?:^|\s)' . preg_quote($key, '/') . '=\s*(.*?)' . $end . '/s', $payload, $m)) {
             $fields[$key] = trim($m[1]);
         }
