@@ -1,8 +1,8 @@
 <?php
 /**
  * Plugin Name: Montagne & Paesi - Foto del Giorno Meta
- * Description: Salva automaticamente autore, Instagram, luogo, provincia e data delle foto inviate dal Raspberry tramite Postie come custom field WordPress utilizzabili da Elementor.
- * Version: 1.2.0
+ * Description: Salva automaticamente autore, Instagram, luogo, provincia e data delle foto inviate dal Raspberry tramite Postie come custom field WordPress utilizzabili da Elementor. Gestisce anche la query dell'archivio Foto del Giorno.
+ * Version: 1.2.1
  * Author: Montagne & Paesi
  */
 
@@ -123,3 +123,13 @@ function mp_fdg_postie_after($post) {
     return $post;
 }
 add_filter('postie_post_after', 'mp_fdg_postie_after', 10, 1);
+
+/**
+ * Elementor Loop Grid: salta il post più recente perché è già mostrato
+ * nella sezione principale "La foto del giorno".
+ * In Elementor impostare ID Query: foto_del_giorno_archivio
+ */
+function mp_fdg_elementor_archive_offset($query) {
+    $query->set('offset', 1);
+}
+add_action('elementor/query/foto_del_giorno_archivio', 'mp_fdg_elementor_archive_offset');
