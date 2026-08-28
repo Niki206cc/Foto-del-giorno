@@ -85,11 +85,32 @@ def extract_form_email(text):
     return ""
 
 
-def _social_link(label, url):
+def extract_form_name(text):
+    """Legge il nome inserito nel modulo Elementor, evitando il nome mittente tecnico."""
+    text = text or ""
+    patterns = [
+        r"(?im)^\s*(?:nome\s+e\s+cognome|nome\s+completo|nome)\s*:\s*([^\r\n]+?)\s*$",
+    ]
+    for pattern in patterns:
+        match = re.search(pattern, text)
+        if match:
+            value = html.unescape(match.group(1)).strip()
+            value = re.sub(r"\s+", " ", value)
+            if value and "@" not in value and len(value) <= 100:
+                return value
+    return ""
+
+
+def _social_link(icon, label, url):
     url = (url or "").strip()
     if not url:
         return ""
-    return f'<li><a href="{html.escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">{html.escape(label)}</a></li>'
+    return (
+        f'<li style="margin:7px 0;">'
+        f'<span style="display:inline-block;width:24px;">{html.escape(icon)}</span>'
+        f'<a href="{html.escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">'
+        f'{html.escape(label)}</a></li>'
+    )
 
 
 def send_thank_you_email(recipient, name=""):
@@ -100,13 +121,14 @@ def send_thank_you_email(recipient, name=""):
     if any(not s.get(k) for k in needed):
         return False
 
-    greeting = f"Ciao {html.escape(name.strip())}," if name and name.strip() else "Ciao,"
+    clean_name = html.unescape((name or "").strip())
+    greeting = f"Ciao {html.escape(clean_name)}," if clean_name else "Ciao,"
     social_links = "".join(filter(None, [
-        _social_link("Sito Montagne & Paesi", s.get("site_home_url")),
-        _social_link("Instagram", s.get("social_instagram_url")),
-        _social_link("Facebook", s.get("social_facebook_url")),
-        _social_link("Telegram", s.get("social_telegram_url")),
-        _social_link("WhatsApp", s.get("social_whatsapp_url")),
+        _social_link("🌐", "Sito Montagne & Paesi", s.get("site_home_url")),
+        _social_link("📷", "Instagram", s.get("social_instagram_url")),
+        _social_link("🔵", "Facebook", s.get("social_facebook_url")),
+        _social_link("✈️", "Telegram", s.get("social_telegram_url")),
+        _social_link("💬", "WhatsApp", s.get("social_whatsapp_url")),
     ]))
 
     body_html = f"""
@@ -114,23 +136,23 @@ def send_thank_you_email(recipient, name=""):
     <p>grazie per aver inviato la tua foto a <strong>Montagne &amp; Paesi</strong>.</p>
     <p>La redazione la valuterà per la pubblicazione nella rubrica <strong>La foto del giorno</strong>.</p>
     <p>Nel frattempo puoi seguirci qui:</p>
-    <ul>{social_links}</ul>
+    <ul style="list-style:none;padding-left:0;margin-left:0;">{social_links}</ul>
     <p>Grazie per contribuire a raccontare il nostro territorio!</p>
     <p><strong>Montagne &amp; Paesi</strong></p>
     """.strip()
 
     plain_links = []
-    for label, key in [
-        ("Sito", "site_home_url"),
-        ("Instagram", "social_instagram_url"),
-        ("Facebook", "social_facebook_url"),
-        ("Telegram", "social_telegram_url"),
-        ("WhatsApp", "social_whatsapp_url"),
+    for icon, label, key in [
+        ("🌐", "Sito", "site_home_url"),
+        ("📷", "Instagram", "social_instagram_url"),
+        ("🔵", "Facebook", "social_facebook_url"),
+        ("✈️", "Telegram", "social_telegram_url"),
+        ("💬", "WhatsApp", "social_whatsapp_url"),
     ]:
         url = (s.get(key) or "").strip()
         if url:
-            plain_links.append(f"{label}: {url}")
-    greeting_plain = f"Ciao {name.strip()}," if name and name.strip() else "Ciao,"
+            plain_links.append(f"{icon} {label}: {url}")
+    greeting_plain = f"Ciao {clean_name}," if clean_name else "Ciao,"
     body_plain = "\n\n".join([
         greeting_plain,
         "Grazie per aver inviato la tua foto a Montagne & Paesi.",
@@ -226,6 +248,7 @@ def sync_mail():
         body = extract_text(msg)
         instagram_username = extract_instagram_username(body)
         form_email = extract_form_email(body)
+        form_name = extract_form_name(body)
         received = msg.get("Date", "")
         try:
             received_iso = email.utils.parsedate_to_datetime(received).isoformat()
@@ -263,7 +286,7 @@ def sync_mail():
                             message_id, sender_email, sender_name, email_subject, email_body,
                             received_at, image_path, image_name, image_hash, instagram_username, status
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new')
-                    """, (msg_key, form_email or sender_email, sender_name, subject, body, received_iso,
+                    """, (msg_key, form_email or sender_email, form_name or sender_name, subject, body, received_iso,
                           str(path), name, digest, instagram_username))
                     inserted += 1
                     added += 1
@@ -272,8 +295,9 @@ def sync_mail():
 
         if inserted > 0:
             recipient = form_email or sender_email
+            thank_name = form_name or ""
             try:
-                if recipient and send_thank_you_email(recipient, sender_name):
+                if recipient and send_thank_you_email(recipient, thank_name):
                     thanked += 1
             except Exception:
                 pass
