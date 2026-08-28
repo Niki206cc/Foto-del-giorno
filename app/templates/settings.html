@@ -64,6 +64,17 @@
 </div>
 
 <div class="card">
+<h2>💌 Ringraziamento automatico</h2>
+<label><input type="checkbox" name="thank_you_enabled" style="width:auto" {% if s.thank_you_enabled=='1' %}checked{% endif %}> Invia una mail di ringraziamento a chi manda una foto</label>
+<label>Oggetto email</label><input name="thank_you_subject" value="{{s.thank_you_subject}}">
+<label>Instagram</label><input name="social_instagram_url" value="{{s.social_instagram_url}}" placeholder="https://www.instagram.com/.../">
+<label>Facebook</label><input name="social_facebook_url" value="{{s.social_facebook_url}}" placeholder="https://www.facebook.com/...">
+<label>Telegram</label><input name="social_telegram_url" value="{{s.social_telegram_url}}" placeholder="https://t.me/...">
+<label>WhatsApp</label><input name="social_whatsapp_url" value="{{s.social_whatsapp_url}}" placeholder="https://www.whatsapp.com/channel/...">
+<p class="muted">La mail viene inviata una sola volta per ogni email ricevuta con foto. Il sistema prova a usare l'indirizzo scritto nel campo “Email:” del modulo Elementor; se non lo trova usa il mittente dell'email.</p>
+</div>
+
+<div class="card">
 <h2>🧹 Manutenzione</h2>
 <label>Elimina file delle foto pubblicate dopo N giorni (0 = mai)</label><input name="cleanup_published_days" value="{{s.cleanup_published_days}}">
 <label>Elimina cestino dopo N giorni (0 = mai)</label><input name="cleanup_trash_days" value="{{s.cleanup_trash_days}}">
