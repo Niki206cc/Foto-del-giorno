@@ -35,6 +35,14 @@ def _author_html(author):
     return f"<p><strong>Foto di:</strong> {html.escape(author)}</p>"
 
 
+def _rubric_html(author):
+    author = (author or "").strip()
+    label = "La foto del giorno"
+    if author:
+        label += f" - {author}"
+    return f"<p><strong>{html.escape(label)}</strong></p>"
+
+
 def _clean_instagram_username(value):
     value = (value or "").strip()
     value = re.sub(r"^https?://(?:www\.)?instagram\.com/", "", value, flags=re.I)
@@ -42,19 +50,26 @@ def _clean_instagram_username(value):
     return value if re.fullmatch(r"[A-Za-z0-9._]{1,30}", value) else ""
 
 
+def _instagram_url(username):
+    username = _clean_instagram_username(username)
+    return f"https://www.instagram.com/{username}/" if username else ""
+
+
 def _instagram_html(username):
     username = _clean_instagram_username(username)
     if not username:
         return ""
     safe_user = html.escape(username)
-    url = f"https://www.instagram.com/{username}/"
+    url = _instagram_url(username)
     return f'<p><strong>Instagram:</strong> <a href="{html.escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">@{safe_user}</a></p>'
 
 
 def _metadata_marker(row):
+    instagram_username = _clean_instagram_username(row["instagram_username"])
     fields = {
         "foto_autore": (row["author"] or "").strip(),
-        "foto_instagram": _clean_instagram_username(row["instagram_username"]),
+        "foto_instagram": instagram_username,
+        "foto_instagram_url": _instagram_url(instagram_username),
         "foto_luogo": (row["location"] or "").strip(),
         "foto_provincia": (row["province"] or "").strip(),
         "foto_data": (row["shot_date"] or "").strip(),
@@ -82,7 +97,7 @@ def build_postie_message(row):
     instagram_username = _clean_instagram_username(row["instagram_username"])
 
     body_parts = [
-        "<p><strong>Foto del giorno</strong></p>",
+        _rubric_html(row["author"]),
         _paragraphs(row["article_text"]),
         _author_html(row["author"]),
         _instagram_html(instagram_username),
@@ -93,11 +108,14 @@ def build_postie_message(row):
     body_parts.extend(["<hr>", _footer_html(footer, public_email, site_home_url)])
     body_html = "\n".join(x for x in body_parts if x)
 
-    plain_parts = ["Foto del giorno", row["article_text"] or ""]
+    rubric_plain = "La foto del giorno"
+    if (row["author"] or "").strip():
+        rubric_plain += f" - {row['author'].strip()}"
+    plain_parts = [rubric_plain, row["article_text"] or ""]
     if (row["author"] or "").strip():
         plain_parts.append(f"Foto di: {row['author'].strip()}")
     if instagram_username:
-        plain_parts.append(f"Instagram: @{instagram_username} - https://www.instagram.com/{instagram_username}/")
+        plain_parts.append(f"Instagram: @{instagram_username} - {_instagram_url(instagram_username)}")
     plain_parts.append(footer)
 
     msg = EmailMessage()
